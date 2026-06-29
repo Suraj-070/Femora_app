@@ -27,6 +27,7 @@ export function usePeriods() {
   return useQuery<Period[]>({
     queryKey: ["periods"],
     queryFn: () => fetchJson("/api/periods"),
+    staleTime: 2 * 60 * 1000, // 2 min
   });
 }
 
@@ -149,6 +150,7 @@ export function usePrediction() {
   return useQuery<PredictionResult>({
     queryKey: ["prediction"],
     queryFn: () => fetchJson("/api/prediction"),
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -157,6 +159,7 @@ export function useStats() {
   return useQuery<Stats>({
     queryKey: ["stats"],
     queryFn: () => fetchJson("/api/stats"),
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -174,6 +177,7 @@ export function useSettings() {
   return useQuery<Settings>({
     queryKey: ["settings"],
     queryFn: () => fetchJson("/api/settings"),
+    staleTime: 5 * 60 * 1000,
   });
 }
 
