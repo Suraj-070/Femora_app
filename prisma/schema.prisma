@@ -1,0 +1,111 @@
+// Femora - Period & Cycle Tracking App
+// Prisma schema — PostgreSQL (Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String?
+  name      String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile           Profile?
+  periods           Period[]
+  symptoms          Symptom[]
+  moods             Mood[]
+  settings          Settings?
+  pushSubscriptions PushSubscription[]
+}
+
+model Profile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  fullName  String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Period {
+  id        String    @id @default(cuid())
+  userId    String
+  startDate DateTime
+  endDate   DateTime?
+  flow      String
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startDate])
+}
+
+model Symptom {
+  id          String   @id @default(cuid())
+  userId      String
+  date        DateTime
+  symptomName String
+  severity    Int
+  note        String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model Mood {
+  id        String   @id @default(cuid())
+  userId    String
+  date      DateTime
+  mood      String
+  note      String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+}
+
+model Settings {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  theme      String   @default("system")
+  pinEnabled Boolean  @default(false)
+  pin        String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Health profile
+  onboardingDone    Boolean @default(false)
+  ageRange          String?
+  bodyType          String?
+  weightRange       String? // "under-50kg" | "50-70kg" | "70-90kg" | "over-90kg" | "prefer-not-to-say"
+  stressLevel       String?
+  exerciseFrequency String?
+  conditions        String? // JSON array string
+  dietType          String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

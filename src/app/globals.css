@@ -1,0 +1,221 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 0.875rem;
+  /* Femora premium rose theme - warm, soft, premium */
+  --background: oklch(0.992 0.004 20);
+  --foreground: oklch(0.22 0.02 350);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.02 350);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.02 350);
+  --primary: oklch(0.62 0.22 12);
+  --primary-foreground: oklch(0.99 0.005 20);
+  --secondary: oklch(0.96 0.012 15);
+  --secondary-foreground: oklch(0.3 0.03 350);
+  --muted: oklch(0.965 0.01 15);
+  --muted-foreground: oklch(0.52 0.02 350);
+  --accent: oklch(0.95 0.025 15);
+  --accent-foreground: oklch(0.3 0.04 350);
+  --destructive: oklch(0.58 0.24 27);
+  --border: oklch(0.92 0.012 15);
+  --input: oklch(0.93 0.01 15);
+  --ring: oklch(0.62 0.22 12);
+  --chart-1: oklch(0.65 0.24 12);
+  --chart-2: oklch(0.7 0.16 350);
+  --chart-3: oklch(0.72 0.14 60);
+  --chart-4: oklch(0.68 0.16 300);
+  --chart-5: oklch(0.7 0.15 180);
+  --sidebar: oklch(0.985 0.004 20);
+  --sidebar-foreground: oklch(0.22 0.02 350);
+  --sidebar-primary: oklch(0.62 0.22 12);
+  --sidebar-primary-foreground: oklch(0.99 0.005 20);
+  --sidebar-accent: oklch(0.95 0.025 15);
+  --sidebar-accent-foreground: oklch(0.3 0.04 350);
+  --sidebar-border: oklch(0.92 0.012 15);
+  --sidebar-ring: oklch(0.62 0.22 12);
+}
+
+.dark {
+  --background: oklch(0.17 0.018 320);
+  --foreground: oklch(0.97 0.01 20);
+  --card: oklch(0.21 0.025 325);
+  --card-foreground: oklch(0.97 0.01 20);
+  --popover: oklch(0.21 0.025 325);
+  --popover-foreground: oklch(0.97 0.01 20);
+  --primary: oklch(0.72 0.2 12);
+  --primary-foreground: oklch(0.16 0.02 320);
+  --secondary: oklch(0.26 0.03 325);
+  --secondary-foreground: oklch(0.97 0.01 20);
+  --muted: oklch(0.26 0.025 325);
+  --muted-foreground: oklch(0.72 0.02 350);
+  --accent: oklch(0.3 0.04 325);
+  --accent-foreground: oklch(0.97 0.01 20);
+  --destructive: oklch(0.7 0.19 22);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.72 0.2 12);
+  --chart-1: oklch(0.72 0.2 12);
+  --chart-2: oklch(0.72 0.16 350);
+  --chart-3: oklch(0.74 0.14 60);
+  --chart-4: oklch(0.7 0.16 300);
+  --chart-5: oklch(0.72 0.15 180);
+  --sidebar: oklch(0.2 0.02 325);
+  --sidebar-foreground: oklch(0.97 0.01 20);
+  --sidebar-primary: oklch(0.72 0.2 12);
+  --sidebar-primary-foreground: oklch(0.16 0.02 320);
+  --sidebar-accent: oklch(0.3 0.04 325);
+  --sidebar-accent-foreground: oklch(0.97 0.01 20);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.72 0.2 12);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+/* --- Femora premium utilities --- */
+
+/* Soft ambient gradient background for app */
+.femora-ambient {
+  background:
+    radial-gradient(60% 50% at 15% 0%, oklch(0.65 0.22 12 / 0.10), transparent 70%),
+    radial-gradient(55% 45% at 100% 5%, oklch(0.7 0.16 350 / 0.10), transparent 70%),
+    radial-gradient(60% 60% at 50% 100%, oklch(0.72 0.14 60 / 0.08), transparent 70%);
+}
+.dark .femora-ambient {
+  background:
+    radial-gradient(60% 50% at 15% 0%, oklch(0.72 0.2 12 / 0.16), transparent 70%),
+    radial-gradient(55% 45% at 100% 5%, oklch(0.72 0.16 350 / 0.14), transparent 70%),
+    radial-gradient(60% 60% at 50% 100%, oklch(0.7 0.16 300 / 0.10), transparent 70%);
+}
+
+/* Glassmorphism card */
+.glass {
+  background: oklch(1 0 0 / 0.6);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid oklch(1 0 0 / 0.5);
+}
+.dark .glass {
+  background: oklch(0.25 0.03 325 / 0.55);
+  border: 1px solid oklch(1 0 0 / 0.08);
+}
+
+/* Premium gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, oklch(0.62 0.22 12), oklch(0.68 0.2 350));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Gradient primary button feel */
+.bg-femora-gradient {
+  background: linear-gradient(135deg, oklch(0.64 0.23 12), oklch(0.6 0.2 345));
+}
+
+/* Premium scrollbar */
+.femora-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.femora-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.femora-scroll::-webkit-scrollbar-thumb {
+  background: oklch(0.62 0.22 12 / 0.3);
+  border-radius: 999px;
+}
+.femora-scroll::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.62 0.22 12 / 0.5);
+}
+
+/* hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* smooth tab transitions */
+.view-enter {
+  animation: viewIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes viewIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* gentle pulse for live indicators */
+@keyframes softPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.animate-soft-pulse {
+  animation: softPulse 2.2s ease-in-out infinite;
+}
+
+/* safe-area padding for bottom nav on mobile */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
