@@ -13,21 +13,44 @@ async function fetchJson(url: string, init?: RequestInit) {
     try {
       const j = await res.json();
       msg = j.error ?? msg;
-    } catch {
-      /* ignore */
-    }
+    } catch { /* ignore */ }
     throw new Error(msg);
   }
   if (res.status === 204) return null;
   return res.json();
 }
 
+// ---- Bootstrap — single request for all initial data ----
+export interface BootstrapData {
+  periods: Period[];
+  todaySymptoms: Symptom[];
+  todayMoods: MoodEntry[];
+  prediction: PredictionResult;
+  stats: Stats;
+  settings: Settings;
+}
+
+export function useBootstrap() {
+  return useQuery<BootstrapData>({
+    queryKey: ["bootstrap"],
+    queryFn: () => fetchJson("/api/bootstrap"),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
 // ---- Periods ----
 export function usePeriods() {
+  const qc = useQueryClient();
   return useQuery<Period[]>({
     queryKey: ["periods"],
-    queryFn: () => fetchJson("/api/periods"),
-    staleTime: 2 * 60 * 1000, // 2 min
+    queryFn: () => {
+      const bootstrap = qc.getQueryData<BootstrapData>(["bootstrap"]);
+      if (bootstrap?.periods) return Promise.resolve(bootstrap.periods);
+      return fetchJson("/api/periods");
+    },
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 }
 
@@ -37,6 +60,7 @@ export function useCreatePeriod() {
     mutationFn: (data: { startDate: string; endDate?: string | null; flow: Flow; notes?: string | null }) =>
       fetchJson("/api/periods", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["periods"] });
       qc.invalidateQueries({ queryKey: ["prediction"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
@@ -51,6 +75,7 @@ export function useUpdatePeriod() {
     mutationFn: (data: { id: string; startDate?: string; endDate?: string | null; flow?: Flow; notes?: string | null }) =>
       fetchJson("/api/periods", { method: "PATCH", body: JSON.stringify(data) }),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["periods"] });
       qc.invalidateQueries({ queryKey: ["prediction"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
@@ -63,6 +88,7 @@ export function useDeletePeriod() {
   return useMutation({
     mutationFn: (id: string) => fetchJson(`/api/periods?id=${id}`, { method: "DELETE" }),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["periods"] });
       qc.invalidateQueries({ queryKey: ["prediction"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
@@ -80,6 +106,8 @@ export function useSymptoms(from?: string, to?: string) {
   return useQuery<Symptom[]>({
     queryKey: ["symptoms", from ?? "all", to ?? "all"],
     queryFn: () => fetchJson(`/api/symptoms${q ? `?${q}` : ""}`),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 }
 
@@ -89,6 +117,7 @@ export function useCreateSymptom() {
     mutationFn: (data: { date: string; symptomName: string; severity: number; note?: string | null }) =>
       fetchJson("/api/symptoms", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["symptoms"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
       qc.invalidateQueries({ queryKey: ["insights"] });
@@ -101,6 +130,7 @@ export function useDeleteSymptom() {
   return useMutation({
     mutationFn: (id: string) => fetchJson(`/api/symptoms?id=${id}`, { method: "DELETE" }),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["symptoms"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
       qc.invalidateQueries({ queryKey: ["insights"] });
@@ -117,6 +147,8 @@ export function useMoods(from?: string, to?: string) {
   return useQuery<MoodEntry[]>({
     queryKey: ["moods", from ?? "all", to ?? "all"],
     queryFn: () => fetchJson(`/api/moods${q ? `?${q}` : ""}`),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 }
 
@@ -126,6 +158,7 @@ export function useCreateMood() {
     mutationFn: (data: { date: string; mood: string; note?: string | null }) =>
       fetchJson("/api/moods", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["moods"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
       qc.invalidateQueries({ queryKey: ["insights"] });
@@ -138,6 +171,7 @@ export function useDeleteMood() {
   return useMutation({
     mutationFn: (id: string) => fetchJson(`/api/moods?id=${id}`, { method: "DELETE" }),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["moods"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
       qc.invalidateQueries({ queryKey: ["insights"] });
@@ -147,19 +181,31 @@ export function useDeleteMood() {
 
 // ---- Prediction ----
 export function usePrediction() {
+  const qc = useQueryClient();
   return useQuery<PredictionResult>({
     queryKey: ["prediction"],
-    queryFn: () => fetchJson("/api/prediction"),
+    queryFn: () => {
+      const bootstrap = qc.getQueryData<BootstrapData>(["bootstrap"]);
+      if (bootstrap?.prediction) return Promise.resolve(bootstrap.prediction);
+      return fetchJson("/api/prediction");
+    },
     staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 }
 
 // ---- Stats ----
 export function useStats() {
+  const qc = useQueryClient();
   return useQuery<Stats>({
     queryKey: ["stats"],
-    queryFn: () => fetchJson("/api/stats"),
+    queryFn: () => {
+      const bootstrap = qc.getQueryData<BootstrapData>(["bootstrap"]);
+      if (bootstrap?.stats) return Promise.resolve(bootstrap.stats);
+      return fetchJson("/api/stats");
+    },
     staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
 }
 
@@ -169,15 +215,22 @@ export function useInsights() {
     queryKey: ["insights"],
     queryFn: () => fetchJson("/api/insights"),
     staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 }
 
 // ---- Settings ----
 export function useSettings() {
+  const qc = useQueryClient();
   return useQuery<Settings>({
     queryKey: ["settings"],
-    queryFn: () => fetchJson("/api/settings"),
+    queryFn: () => {
+      const bootstrap = qc.getQueryData<BootstrapData>(["bootstrap"]);
+      if (bootstrap?.settings) return Promise.resolve(bootstrap.settings);
+      return fetchJson("/api/settings");
+    },
     staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 }
 
@@ -185,13 +238,12 @@ export type UpdateSettingsData = {
   theme?: "light" | "dark" | "system";
   pinEnabled?: boolean;
   pin?: string | null;
-  // Health profile
   onboardingDone?: boolean;
   ageRange?: string | null;
   bodyType?: string | null;
+  weightRange?: string | null;
   stressLevel?: string | null;
   exerciseFrequency?: string | null;
-  weightRange?: string | null;
   conditions?: string | null;
   dietType?: string | null;
 };
@@ -201,7 +253,10 @@ export function useUpdateSettings() {
   return useMutation({
     mutationFn: (data: UpdateSettingsData) =>
       fetchJson("/api/settings", { method: "PATCH", body: JSON.stringify(data) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["settings"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["settings"] });
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
+    },
   });
 }
 
@@ -215,5 +270,7 @@ export function useSession() {
       const data = await res.json();
       return data?.user ? { user: data.user } : null;
     },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
   });
 }

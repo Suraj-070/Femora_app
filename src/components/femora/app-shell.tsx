@@ -12,7 +12,7 @@ import { InsightsView } from "@/components/femora/views/insights-view";
 import { SettingsView } from "@/components/femora/views/settings-view";
 import { OnboardingView } from "@/components/femora/onboarding-view";
 import { AnimatePresence, motion } from "framer-motion";
-import { useSettings } from "@/hooks/use-data";
+import { useBootstrap } from "@/hooks/use-data";
 import type { ViewKey } from "@/store/app-store";
 
 interface AppShellProps {
@@ -22,11 +22,13 @@ interface AppShellProps {
 export function AppShell({ user }: AppShellProps) {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
-  const { data: settings, isLoading } = useSettings();
 
-  const showOnboarding = !isLoading && settings && !settings.onboardingDone;
+  // Single bootstrap call — loads all data at once
+  const { data: bootstrap, isLoading } = useBootstrap();
 
-  // Push initial history state on mount
+  const showOnboarding = !isLoading && bootstrap && !bootstrap.settings.onboardingDone;
+
+  // Android back button handling
   useEffect(() => {
     window.history.replaceState({ view: "dashboard" }, "");
 
@@ -39,7 +41,7 @@ export function AppShell({ user }: AppShellProps) {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [setView]);
 
-  // Push to history every time view changes
+  // Push to history on every view change
   useEffect(() => {
     window.history.pushState({ view }, "");
   }, [view]);
