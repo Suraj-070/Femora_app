@@ -422,7 +422,25 @@ export function DashboardView() {
 
   return (
     <div className="view-enter px-4 sm:px-6 space-y-4 pb-24 pt-2">
-      {/* 1. Hero / Cycle Status */}
+      {/* 1. FemoraFact — top of dashboard for instant visibility */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+      >
+        <GlassCard className="p-4 sm:p-5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-400/20 to-rose-400/20 flex items-center justify-center shrink-0">
+              <Lightbulb className="w-4 h-4 text-rose-500" />
+            </div>
+            <p className="text-sm text-foreground leading-snug flex-1">
+              {getTodaysFact()}
+            </p>
+          </div>
+        </GlassCard>
+      </motion.div>
+
+      {/* 2. Hero / Cycle Status */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -545,28 +563,6 @@ export function DashboardView() {
               </div>
             )}
           </div>
-        </GlassCard>
-      </motion.div>
-
-      {/* 2. FemoraFact */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.05, duration: 0.4 }}
-      >
-        <GlassCard className="p-5 sm:p-6">
-          <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-400/20 to-rose-400/20 flex items-center justify-center shrink-0">
-              <Lightbulb className="w-5 h-5 text-rose-500" />
-            </div>
-            <div>
-              <h3 className="font-semibold leading-tight">FemoraFact</h3>
-              <p className="text-xs text-muted-foreground">Daily cycle insight</p>
-            </div>
-          </div>
-          <p className="text-sm text-foreground leading-relaxed">
-            {getTodaysFact()}
-          </p>
         </GlassCard>
       </motion.div>
 
