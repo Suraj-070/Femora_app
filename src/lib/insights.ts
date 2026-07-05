@@ -24,6 +24,10 @@ function diffDays(a: Date, b: Date): number {
   return Math.round((startOfDay(a).getTime() - startOfDay(b).getTime()) / 86400000);
 }
 
+function toDateKey(d: Date | string): string {
+  return startOfDay(new Date(d)).toISOString().slice(0, 10);
+}
+
 // Accept any object from Prisma — avoids type mismatch with generated client
 function buildHealthProfileContext(settings: Record<string, unknown> | null): string {
   if (!settings) return "Health profile: not provided.";
@@ -108,9 +112,12 @@ function buildHealthProfileContext(settings: Record<string, unknown> | null): st
     : "Health profile: not provided.";
 }
 
+const FLOW_INTENSITY: Record<string, number> = { spotting: 1, light: 2, medium: 3, heavy: 4 };
+
 async function buildSummary(userId: string) {
-  const [periods, symptoms, moods, prediction, stats, settings] = await Promise.all([
+  const [periods, periodDays, symptoms, moods, prediction, stats, settings] = await Promise.all([
     db.period.findMany({ where: { userId }, orderBy: { startDate: "asc" } }),
+    db.periodDay.findMany({ where: { userId }, orderBy: { date: "asc" } }),
     db.symptom.findMany({ where: { userId }, orderBy: { date: "asc" } }),
     db.mood.findMany({ where: { userId }, orderBy: { date: "asc" } }),
     getPredictionForUser(userId),
@@ -126,6 +133,40 @@ async function buildSummary(userId: string) {
   for (let i = 1; i < sortedPeriods.length; i++) {
     cycleLengths.push(diffDays(new Date(sortedPeriods[i].startDate), new Date(sortedPeriods[i - 1].startDate)));
   }
+
+  // --- Flow curve: average flow intensity per day-of-period, across all logged periods ---
+  // e.g. day 1 tends heavy, day 4 tends light — real per-day pattern instead of one label.
+  const flowByCycleDay: Record<number, number[]> = {};
+  const periodStartById = new Map(periods.map((p) => [p.id, startOfDay(new Date(p.startDate))]));
+  for (const pd of periodDays) {
+    const start = periodStartById.get(pd.periodId);
+    if (!start) continue;
+    const dayNum = diffDays(new Date(pd.date), start) + 1;
+    if (dayNum < 1 || dayNum > 15) continue; // sanity bound
+    const intensity = FLOW_INTENSITY[pd.flow] ?? 3;
+    (flowByCycleDay[dayNum] ??= []).push(intensity);
+  }
+  const flowCurve = Object.entries(flowByCycleDay)
+    .map(([day, vals]) => ({ day: Number(day), avgIntensity: Number((vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1)) }))
+    .sort((a, b) => a.day - b.day);
+
+  // --- Flow / symptom correlation: is symptom severity higher on heavier-flow days? ---
+  const periodDayByDate = new Map(periodDays.map((pd) => [toDateKey(pd.date), pd]));
+  const heavyDaySeverities: number[] = [];
+  const lightDaySeverities: number[] = [];
+  for (const s of symptoms) {
+    const pd = periodDayByDate.get(toDateKey(s.date));
+    if (!pd) continue;
+    const intensity = FLOW_INTENSITY[pd.flow] ?? 3;
+    if (intensity >= 3) heavyDaySeverities.push(s.severity);
+    else lightDaySeverities.push(s.severity);
+  }
+  const avgSeverityHeavyFlowDays = heavyDaySeverities.length
+    ? Number((heavyDaySeverities.reduce((s, v) => s + v, 0) / heavyDaySeverities.length).toFixed(1))
+    : null;
+  const avgSeverityLightFlowDays = lightDaySeverities.length
+    ? Number((lightDaySeverities.reduce((s, v) => s + v, 0) / lightDaySeverities.length).toFixed(1))
+    : null;
 
   const symptomTiming: Record<string, number[]> = {};
   for (const s of symptoms) {
@@ -174,6 +215,9 @@ async function buildSummary(userId: string) {
     moodPremenstrual,
     cycleTrend: stats.cycleTrend,
     lastFewCycles: cycleLengths.slice(-4),
+    flowCurve, // avg flow intensity (1=spotting..4=heavy) per day-of-period, across all periods
+    avgSeverityHeavyFlowDays, // avg symptom severity on medium/heavy flow days
+    avgSeverityLightFlowDays, // avg symptom severity on spotting/light flow days
     healthProfile: buildHealthProfileContext(settings as Record<string, unknown> | null),
   };
 }
@@ -194,6 +238,8 @@ Rules:
   - Intense exercise → note possible impact on cycle length
   - 40s+ age → acknowledge perimenopause variability
 - Be specific using the data (e.g. "Your average cycle is 29 days", "Cramps appear 2-3 days before your period").
+- You now have day-by-day flow data (flowCurve: avg intensity 1=spotting..4=heavy per day-of-period). Use it for concrete patterns like "Your flow tends to peak on day 2 and taper by day 5" instead of guessing.
+- If avgSeverityHeavyFlowDays is clearly higher than avgSeverityLightFlowDays (both non-null), mention that symptoms tend to feel worse on heavier flow days — this is a genuinely useful correlation, not a diagnosis.
 - If data is too sparse (fewer than 2 periods), generate gentle onboarding/tip insights tailored to their health profile.
 - Never invent numbers not present in the data. If unsure, speak generally.
 - Do not use emoji in the text.`;

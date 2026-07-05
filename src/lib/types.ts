@@ -33,6 +33,18 @@ export interface Period {
   userId: string;
   startDate: string;
   endDate: string | null;
+  flow: Flow; // legacy — no longer written by new UI, kept for old rows
+  notes: string | null; // legacy
+  createdAt: string;
+  updatedAt: string;
+  days?: PeriodDay[];
+}
+
+export interface PeriodDay {
+  id: string;
+  periodId: string;
+  userId: string;
+  date: string;
   flow: Flow;
   notes: string | null;
   createdAt: string;

@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { GlassCard } from "@/components/femora/shared/glass-card";
 import { cn } from "@/lib/utils";
-import { usePeriods, useSymptoms, useMoods, usePrediction } from "@/hooks/use-data";
+import { usePeriods, usePeriodDays, useSymptoms, useMoods, usePrediction } from "@/hooks/use-data";
 import {
   FLOW_LEVELS,
   flowLabel,
@@ -73,7 +73,7 @@ function rangeDays(startISO: string | null, endISO: string | null): string[] {
 export function CalendarView() {
   const { setView, setLogDate, selectedDate, setSelectedDate } = useAppStore();
   const [month, setMonth] = useState<Date>(new Date());
-  const [tab, setTab] = useState<"calendar" | "list">("calendar");
+  const [tab, setTab] = useState<"calendar" | "list">("list");
   const [direction, setDirection] = useState(1);
 
   const grid = useMemo(() => getMonthGrid(month), [month]);
@@ -81,9 +81,22 @@ export function CalendarView() {
   const toStr = useMemo(() => toISODate(grid[grid.length - 1]), [grid]);
 
   const { data: periods = [], isLoading: periodsLoading } = usePeriods();
+  const { data: periodDays = [] } = usePeriodDays(fromStr, toStr);
   const { data: symptoms = [], isLoading: symptomsLoading } = useSymptoms(fromStr, toStr);
   const { data: moods = [], isLoading: moodsLoading } = useMoods(fromStr, toStr);
   const { data: prediction } = usePrediction();
+
+  // Real per-day flow (new model) takes priority over the legacy single
+  // flow-per-period value, so old un-migrated periods still show *something*.
+  const flowByDate = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const pd of periodDays) m.set(toISODate(fromISO(pd.date)), pd.flow);
+    return m;
+  }, [periodDays]);
+
+  function flowForDate(iso: string, fallbackFlow: string): string {
+    return flowByDate.get(iso) ?? fallbackFlow;
+  }
 
   // Show skeleton only on very first load (no data yet)
   const showSkeleton =
@@ -93,10 +106,10 @@ export function CalendarView() {
   const periodByDay = useMemo(() => {
     const m = new Map<string, Period>();
     for (const p of periods) {
-      for (const d of expandPeriodDays(p)) m.set(d, p);
+      for (const d of expandPeriodDays(p)) m.set(d, { ...p, flow: flowForDate(d, p.flow) as Period["flow"] });
     }
     return m;
-  }, [periods]);
+  }, [periods, flowByDate]);
 
   const symptomsByDay = useMemo(() => {
     const m = new Map<string, Symptom[]>();
@@ -180,7 +193,7 @@ export function CalendarView() {
     for (const p of periods) {
       for (const d of expandPeriodDays(p)) {
         if (d < startISO || d > endISO) continue;
-        ensure(d).period = p;
+        ensure(d).period = { ...p, flow: flowForDate(d, p.flow) as Period["flow"] };
       }
     }
     for (const s of symptoms) {
@@ -195,7 +208,7 @@ export function CalendarView() {
     }
 
     return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
-  }, [periods, symptoms, moods, month]);
+  }, [periods, symptoms, moods, month, flowByDate]);
 
   const variants = {
     enter: (dir: number) => ({ opacity: 0, x: dir > 0 ? 28 : dir < 0 ? -28 : 0 }),
@@ -511,63 +524,109 @@ export function CalendarView() {
                 </Button>
               </div>
             ) : (
-              <div className="max-h-[60vh] overflow-y-auto femora-scroll pr-1 space-y-1">
+              <div className="max-h-[65vh] overflow-y-auto femora-scroll pr-1 space-y-2.5">
                 <AnimatePresence initial={false}>
-                  {listEntries.map((entry) => (
-                    <motion.button
-                      key={entry.date}
-                      layout
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.2 }}
-                      onClick={() => openLog(entry.date)}
-                      className="group w-full flex items-center gap-3 rounded-xl p-2.5 text-left hover:bg-accent/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    >
-                      <div className="flex flex-col items-center justify-center w-12 h-12 shrink-0 rounded-xl bg-accent/70 group-hover:bg-background">
-                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground leading-none">
-                          {format(fromISO(entry.date), "MMM")}
-                        </span>
-                        <span className="text-base font-bold leading-tight">
-                          {format(fromISO(entry.date), "d")}
-                        </span>
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-muted-foreground mb-1">
-                          {format(fromISO(entry.date), "EEEE")}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {entry.period && (
-                            <Badge className="bg-primary text-primary-foreground gap-1">
-                              <Droplets className="size-3" />
-                              {flowLabel(entry.period.flow)}
-                            </Badge>
-                          )}
-                          {entry.symptoms.map((s, i) => {
-                            const sm = symptomMeta(s.symptomName);
-                            return (
-                              <Badge key={`s${i}`} variant="outline" className="gap-1 bg-background/60">
-                                <span>{sm.emoji}</span>
-                                <span className="truncate max-w-[90px]">{s.symptomName}</span>
-                              </Badge>
-                            );
-                          })}
-                          {entry.moods.map((m, i) => {
-                            const mc = moodMeta(m.mood as Mood);
-                            return (
-                              <Badge key={`m${i}`} variant="outline" className="gap-1 bg-background/60">
-                                <span>{mc.emoji}</span>
-                                {mc.label}
-                              </Badge>
-                            );
-                          })}
+                  {listEntries.map((entry) => {
+                    const isToday = entry.date === today;
+                    return (
+                      <motion.button
+                        key={entry.date}
+                        layout
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2 }}
+                        onClick={() => openLog(entry.date)}
+                        className={cn(
+                          "group w-full text-left rounded-2xl p-3.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary border",
+                          entry.period
+                            ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
+                            : "bg-accent/40 border-transparent hover:bg-accent/70"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className={cn(
+                                "flex flex-col items-center justify-center w-11 h-11 shrink-0 rounded-xl",
+                                entry.period
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-background/80"
+                              )}
+                            >
+                              <span className="text-[9px] uppercase tracking-wide leading-none opacity-80">
+                                {format(fromISO(entry.date), "MMM")}
+                              </span>
+                              <span className="text-base font-bold leading-tight">
+                                {format(fromISO(entry.date), "d")}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold leading-tight">
+                                {format(fromISO(entry.date), "EEEE")}
+                              </p>
+                              {isToday && (
+                                <span className="text-[11px] text-primary font-medium">Today</span>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight className="size-4 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
                         </div>
-                      </div>
 
-                      <ChevronRight className="size-4 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
-                    </motion.button>
-                  ))}
+                        <div className="space-y-1.5 pl-0.5">
+                          {entry.period && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Droplets className="size-3.5 text-primary shrink-0" />
+                              <span className="text-muted-foreground w-16 shrink-0">Flow</span>
+                              <Badge className="bg-primary text-primary-foreground">
+                                {flowLabel(entry.period.flow)}
+                              </Badge>
+                            </div>
+                          )}
+
+                          {entry.symptoms.length > 0 && (
+                            <div className="flex items-start gap-2 text-sm">
+                              <span className="size-3.5 shrink-0" />
+                              <span className="text-muted-foreground w-16 shrink-0 pt-0.5">Symptoms</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {entry.symptoms.map((s, i) => {
+                                  const sm = symptomMeta(s.symptomName);
+                                  return (
+                                    <Badge key={`s${i}`} variant="outline" className="gap-1 bg-background/60">
+                                      <span>{sm.emoji}</span>
+                                      <span className="truncate max-w-[90px]">{s.symptomName}</span>
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {entry.moods.length > 0 && (
+                            <div className="flex items-start gap-2 text-sm">
+                              <span className="size-3.5 shrink-0" />
+                              <span className="text-muted-foreground w-16 shrink-0 pt-0.5">Mood</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {entry.moods.map((m, i) => {
+                                  const mc = moodMeta(m.mood as Mood);
+                                  return (
+                                    <Badge key={`m${i}`} variant="outline" className="gap-1 bg-background/60">
+                                      <span>{mc.emoji}</span>
+                                      {mc.label}
+                                    </Badge>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {!entry.period && entry.symptoms.length === 0 && entry.moods.length === 0 && (
+                            <p className="text-xs text-muted-foreground italic">No details logged</p>
+                          )}
+                        </div>
+                      </motion.button>
+                    );
+                  })}
                 </AnimatePresence>
               </div>
             )}

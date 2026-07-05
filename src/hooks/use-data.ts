@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { Period, Symptom, MoodEntry, Settings, PredictionResult, Stats, Flow } from "@/lib/types";
+import type { Period, PeriodDay, Symptom, MoodEntry, Settings, PredictionResult, Stats, Flow } from "@/lib/types";
 
 async function fetchJson(url: string, init?: RequestInit) {
   const res = await fetch(url, {
@@ -97,6 +97,108 @@ export function useDeletePeriod() {
   });
 }
 
+// ---- Active period (new day-by-day model) ----
+export function useActivePeriod() {
+  return useQuery<Period | null>({
+    queryKey: ["activePeriod"],
+    queryFn: () => fetchJson("/api/periods/active"),
+    staleTime: 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+export function useStartPeriod() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data?: { date?: string; flow?: Flow }) =>
+      fetchJson("/api/periods/start", { method: "POST", body: JSON.stringify(data ?? {}) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
+      qc.invalidateQueries({ queryKey: ["periods"] });
+      qc.invalidateQueries({ queryKey: ["activePeriod"] });
+      qc.invalidateQueries({ queryKey: ["periodDays"] });
+      qc.invalidateQueries({ queryKey: ["prediction"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+export function useEndPeriod() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data?: { date?: string }) =>
+      fetchJson("/api/periods/end", { method: "POST", body: JSON.stringify(data ?? {}) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
+      qc.invalidateQueries({ queryKey: ["periods"] });
+      qc.invalidateQueries({ queryKey: ["activePeriod"] });
+      qc.invalidateQueries({ queryKey: ["prediction"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+  });
+}
+
+// ---- Period Days (per-day flow — replaces one-flow-per-period) ----
+export function usePeriodDays(from?: string, to?: string) {
+  const qs = new URLSearchParams();
+  if (from) qs.set("from", from);
+  if (to) qs.set("to", to);
+  const q = qs.toString();
+  return useQuery<PeriodDay[]>({
+    queryKey: ["periodDays", from ?? "all", to ?? "all"],
+    queryFn: () => fetchJson(`/api/period-days${q ? `?${q}` : ""}`),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+}
+
+export function useLogPeriodDay() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { date: string; flow: Flow; notes?: string | null }) =>
+      fetchJson("/api/period-days", { method: "POST", body: JSON.stringify(data) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
+      qc.invalidateQueries({ queryKey: ["periodDays"] });
+      qc.invalidateQueries({ queryKey: ["periods"] });
+      qc.invalidateQueries({ queryKey: ["activePeriod"] });
+      qc.invalidateQueries({ queryKey: ["prediction"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["insights"] });
+    },
+  });
+}
+
+export function useUpdatePeriodDay() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { id: string; flow?: Flow; notes?: string | null }) =>
+      fetchJson("/api/period-days", { method: "PATCH", body: JSON.stringify(data) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
+      qc.invalidateQueries({ queryKey: ["periodDays"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["insights"] });
+    },
+  });
+}
+
+export function useDeletePeriodDay() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => fetchJson(`/api/period-days?id=${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
+      qc.invalidateQueries({ queryKey: ["periodDays"] });
+      qc.invalidateQueries({ queryKey: ["periods"] });
+      qc.invalidateQueries({ queryKey: ["activePeriod"] });
+      qc.invalidateQueries({ queryKey: ["prediction"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["insights"] });
+    },
+  });
+}
+
 // ---- Symptoms ----
 export function useSymptoms(from?: string, to?: string) {
   const qs = new URLSearchParams();
@@ -116,6 +218,20 @@ export function useCreateSymptom() {
   return useMutation({
     mutationFn: (data: { date: string; symptomName: string; severity: number; note?: string | null }) =>
       fetchJson("/api/symptoms", { method: "POST", body: JSON.stringify(data) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
+      qc.invalidateQueries({ queryKey: ["symptoms"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["insights"] });
+    },
+  });
+}
+
+export function useUpdateSymptom() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { id: string; date?: string; symptomName?: string; severity?: number; note?: string | null }) =>
+      fetchJson("/api/symptoms", { method: "PATCH", body: JSON.stringify(data) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["symptoms"] });
@@ -157,6 +273,20 @@ export function useCreateMood() {
   return useMutation({
     mutationFn: (data: { date: string; mood: string; note?: string | null }) =>
       fetchJson("/api/moods", { method: "POST", body: JSON.stringify(data) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
+      qc.invalidateQueries({ queryKey: ["moods"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["insights"] });
+    },
+  });
+}
+
+export function useUpdateMood() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { id: string; date?: string; mood?: string; note?: string | null }) =>
+      fetchJson("/api/moods", { method: "PATCH", body: JSON.stringify(data) }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["moods"] });

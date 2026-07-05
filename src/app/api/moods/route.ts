@@ -58,3 +58,26 @@ export async function DELETE(req: Request) {
   await db.mood.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }
+
+export async function PATCH(req: Request) {
+  const userId = await getUserId();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const body = await req.json();
+  const { id, ...rest } = body;
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const existing = await db.mood.findUnique({ where: { id } });
+  if (!existing || existing.userId !== userId) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const partialSchema = createSchema.partial();
+  const parsed = partialSchema.safeParse(rest);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input", details: parsed.error.flatten() }, { status: 400 });
+  }
+  const data: Record<string, unknown> = {};
+  if (parsed.data.date) data.date = new Date(parsed.data.date);
+  if (parsed.data.mood) data.mood = parsed.data.mood;
+  if (parsed.data.note !== undefined) data.note = parsed.data.note ?? null;
+  const updated = await db.mood.update({ where: { id }, data });
+  return NextResponse.json(updated);
+}

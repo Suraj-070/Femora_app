@@ -8,6 +8,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -42,13 +43,29 @@ model Period {
   userId    String
   startDate DateTime
   endDate   DateTime?
-  flow      String
-  notes     String?
+  flow      String    @default("medium") // legacy: kept for old rows, no longer written by new UI
+  notes     String?   // legacy: kept for old rows, no longer written by new UI
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  days      PeriodDay[]
 
   @@index([userId, startDate])
+}
+
+model PeriodDay {
+  id        String   @id @default(cuid())
+  periodId  String
+  userId    String
+  date      DateTime
+  flow      String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  period    Period   @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  @@unique([periodId, date])
+  @@index([userId, date])
 }
 
 model Symptom {
