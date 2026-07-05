@@ -151,6 +151,17 @@ export function LogView() {
     : null;
 
   const [dismissedSuggestEnd, setDismissedSuggestEnd] = useState(false);
+  const [periodNote, setPeriodNote] = useState<string>("");
+
+  // Prefill/reset the note field whenever the viewed day changes — done as
+  // an "adjust state during render" instead of a useEffect, since resetting
+  // state from an effect causes an avoidable extra render pass.
+  const noteSyncKey = `${date}:${periodDayOnDate?.id ?? "none"}`;
+  const [lastNoteSyncKey, setLastNoteSyncKey] = useState(noteSyncKey);
+  if (noteSyncKey !== lastNoteSyncKey) {
+    setLastNoteSyncKey(noteSyncKey);
+    setPeriodNote(periodDayOnDate?.notes ?? "");
+  }
   const queryClient = useQueryClient();
 
   // #4 hard failsafe already closed a genuinely-abandoned period server-side —
@@ -288,12 +299,31 @@ export function LogView() {
 
   async function handleLogFlow(flowValue: Flow) {
     try {
-      await logPeriodDay.mutateAsync({ date, flow: flowValue });
+      await logPeriodDay.mutateAsync({
+        date,
+        flow: flowValue,
+        notes: periodNote.trim() ? periodNote.trim() : null,
+      });
       toast.success("Flow logged", {
         description: `${FLOW_LEVELS.find((f) => f.value === flowValue)?.label} · ${formatNice(date)}`,
       });
     } catch (e) {
       toast.error("Couldn't log flow", {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
+  }
+
+  async function handleSavePeriodNote() {
+    if (!periodDayOnDate) return;
+    try {
+      await updatePeriodDay.mutateAsync({
+        id: periodDayOnDate.id,
+        notes: periodNote.trim() ? periodNote.trim() : null,
+      });
+      toast.success("Note saved");
+    } catch (e) {
+      toast.error("Couldn't save note", {
         description: e instanceof Error ? e.message : undefined,
       });
     }
@@ -656,6 +686,41 @@ export function LogView() {
                 <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving...
               </div>
             )}
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="period-day-notes" className="text-xs font-medium text-muted-foreground">
+                  Notes for {formatNice(date)}
+                </Label>
+                {periodDayOnDate && periodNote !== (periodDayOnDate.notes ?? "") && (
+                  <button
+                    type="button"
+                    onClick={handleSavePeriodNote}
+                    disabled={updatePeriodDay.isPending}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {updatePeriodDay.isPending ? "Saving..." : "Save note"}
+                  </button>
+                )}
+              </div>
+              <Textarea
+                id="period-day-notes"
+                placeholder={
+                  periodDayOnDate
+                    ? "Add a note for this day..."
+                    : "Add a note, then tap a flow level above to save both"
+                }
+                value={periodNote}
+                onChange={(e) => setPeriodNote(e.target.value)}
+                onBlur={() => {
+                  if (periodDayOnDate && periodNote !== (periodDayOnDate.notes ?? "")) {
+                    handleSavePeriodNote();
+                  }
+                }}
+                rows={2}
+                className="resize-none text-sm"
+              />
+            </div>
 
             <div className="flex items-center justify-between rounded-xl bg-accent/40 px-3 py-2.5">
               <span className="text-xs text-muted-foreground">

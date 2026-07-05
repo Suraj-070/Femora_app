@@ -44,6 +44,7 @@ import {
   useMoods,
   useDeleteMood,
   usePrediction,
+  useActivePeriod,
 } from "@/hooks/use-data";
 import {
   FLOW_LEVELS,
@@ -108,6 +109,7 @@ export function CalendarView() {
   const { data: symptoms = [], isLoading: symptomsLoading } = useSymptoms(fromStr, toStr);
   const { data: moods = [], isLoading: moodsLoading } = useMoods(fromStr, toStr);
   const { data: prediction } = usePrediction();
+  const { data: activePeriod } = useActivePeriod();
 
   const periodById = useMemo(() => new Map(periods.map((p) => [p.id, p])), [periods]);
 
@@ -164,13 +166,17 @@ export function CalendarView() {
 
   const predictedDays = useMemo(() => {
     const set = new Set<string>();
+    // Once you're actively tracking a period for real, the forecast guess
+    // is stale noise — showing it in gaps you deliberately cleared just
+    // fights your own data. Only show it when nothing is being tracked yet.
+    if (activePeriod) return set;
     if (prediction?.earliestDate && prediction?.latestDate) {
       for (const d of rangeDays(prediction.earliestDate, prediction.latestDate)) {
         set.add(d);
       }
     }
     return set;
-  }, [prediction]);
+  }, [prediction, activePeriod]);
 
   const fertileDays = useMemo(() => {
     const set = new Set<string>();
@@ -519,7 +525,9 @@ export function CalendarView() {
                     moods={moodsByDay.get(selectedDate) ?? []}
                     isOvulation={selectedDate >= today && ovulationDay === selectedDate}
                     isFertile={selectedDate >= today && fertileDays.has(selectedDate)}
-                    isPredicted={selectedDate >= today && predictedDays.has(selectedDate)}
+                    isPredicted={
+                      !periodByDay.get(selectedDate) && selectedDate >= today && predictedDays.has(selectedDate)
+                    }
                     onLog={() => openLog(selectedDate)}
                     onClose={() => setSelectedDate(null)}
                   />
