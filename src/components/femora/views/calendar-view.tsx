@@ -374,9 +374,9 @@ export function CalendarView() {
                     const isToday = iso === today;
                     const period = periodByDay.get(iso);
                     const isPeriod = !!period;
-                    const isPredicted = !isPeriod && predictedDays.has(iso);
-                    const isFertile = fertileDays.has(iso);
-                    const isOvulation = ovulationDay === iso;
+                    const isPredicted = !isPeriod && iso >= today && predictedDays.has(iso);
+                    const isFertile = iso >= today && fertileDays.has(iso);
+                    const isOvulation = iso >= today && ovulationDay === iso;
                     const daySymptoms = symptomsByDay.get(iso) ?? [];
                     const dayMoods = moodsByDay.get(iso) ?? [];
                     const hasSymptoms = daySymptoms.length > 0;
@@ -517,9 +517,9 @@ export function CalendarView() {
                     period={periodByDay.get(selectedDate)}
                     symptoms={symptomsByDay.get(selectedDate) ?? []}
                     moods={moodsByDay.get(selectedDate) ?? []}
-                    isOvulation={ovulationDay === selectedDate}
-                    isFertile={fertileDays.has(selectedDate)}
-                    isPredicted={predictedDays.has(selectedDate)}
+                    isOvulation={selectedDate >= today && ovulationDay === selectedDate}
+                    isFertile={selectedDate >= today && fertileDays.has(selectedDate)}
+                    isPredicted={selectedDate >= today && predictedDays.has(selectedDate)}
                     onLog={() => openLog(selectedDate)}
                     onClose={() => setSelectedDate(null)}
                   />
