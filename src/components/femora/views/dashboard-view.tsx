@@ -30,6 +30,7 @@ import {
   useSymptoms,
   useMoods,
   usePrediction,
+  useActivePeriod,
 } from "@/hooks/use-data";
 import {
   todayISO,
@@ -38,6 +39,7 @@ import {
   formatNice,
   formatShort,
   relativeDay,
+  differenceInCalendarDays,
 } from "@/lib/date-utils";
 import { moodMeta, symptomMeta } from "@/lib/constants";
 import { getTodaysFact } from "@/lib/facts";
@@ -253,6 +255,7 @@ export function DashboardView() {
 
   const { data: periods, isLoading: periodsLoading } = usePeriods();
   const { data: prediction, isLoading: predLoading } = usePrediction();
+  const { data: activePeriod } = useActivePeriod();
   const symptomsQuery = useSymptoms(today, today);
   const moodsQuery = useMoods(today, today);
 
@@ -276,7 +279,7 @@ export function DashboardView() {
   const fertileEnd = prediction?.fertileEnd ?? null;
 
   const hasFertility =
-    !!fertileStart && !!fertileEnd && !!ovulationDate;
+    !activePeriod && !!fertileStart && !!fertileEnd && !!ovulationDate;
 
   const inFertileWindow = useMemo(() => {
     if (!fertileStart || !fertileEnd) return false;
@@ -418,7 +421,7 @@ export function DashboardView() {
   /* ------------------------------------------------------------ */
   /* Main dashboard                                               */
   /* ------------------------------------------------------------ */
-  const periodMayBeHere = days !== null && days <= 0;
+  const periodMayBeHere = !activePeriod && days !== null && days <= 0;
 
   return (
     <div className="view-enter px-4 sm:px-6 space-y-4 pb-24 pt-2">
@@ -470,7 +473,29 @@ export function DashboardView() {
               )}
             </div>
 
-            {periodMayBeHere ? (
+            {activePeriod ? (
+              /* actively tracking a period right now */
+              <div className="mt-5 text-center sm:text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-3">
+                  <Droplets className="w-4 h-4" />
+                  Currently on your period
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                  Day {differenceInCalendarDays(fromISO(today), fromISO(activePeriod.startDate)) + 1}
+                </h2>
+                <p className="text-muted-foreground mt-1.5 max-w-md leading-relaxed">
+                  Started {formatNice(activePeriod.startDate)}. Log today&apos;s flow to keep
+                  tracking accurate.
+                </p>
+                <Button
+                  onClick={goLog}
+                  className="mt-5 bg-femora-gradient text-white shadow-lg shadow-rose-500/25 hover:opacity-95 h-12 px-6 rounded-xl font-medium"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Log today
+                </Button>
+              </div>
+            ) : periodMayBeHere ? (
               /* period expected now / overdue */
               <div className="mt-5 text-center sm:text-left">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-300 text-sm font-medium mb-3">
