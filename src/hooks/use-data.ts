@@ -126,6 +126,22 @@ export function useStartPeriod() {
   });
 }
 
+export function useReopenPeriod() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => fetchJson("/api/periods/reopen", { method: "POST", body: JSON.stringify({ id }) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bootstrap"] });
+      qc.invalidateQueries({ queryKey: ["periods"] });
+      qc.invalidateQueries({ queryKey: ["activePeriod"] });
+      qc.invalidateQueries({ queryKey: ["periodDays"] });
+      qc.invalidateQueries({ queryKey: ["prediction"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["insights"] });
+    },
+  });
+}
+
 export function useEndPeriod() {
   const qc = useQueryClient();
   return useMutation({

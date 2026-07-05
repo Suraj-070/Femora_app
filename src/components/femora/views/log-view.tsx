@@ -50,6 +50,7 @@ import {
   useActivePeriod,
   useStartPeriod,
   useEndPeriod,
+  useReopenPeriod,
   usePeriodDays,
   useLogPeriodDay,
   useUpdatePeriodDay,
@@ -132,6 +133,19 @@ export function LogView() {
 
   const activePeriod = activePeriodQuery.data?.autoClosedByFailsafe ? null : activePeriodQuery.data ?? null;
   const periodDayOnDate = (periodDayQuery.data ?? [])[0] ?? null;
+
+  // Fallback for "reopen" if the person missed the Undo toast — only offer
+  // it when the most recent period ended within the last 3 days.
+  const recentlyEndedPeriod = useMemo(() => {
+    if (activePeriod) return null;
+    const all = periodsQuery.data ?? [];
+    const mostRecent = [...all].sort(
+      (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    )[0];
+    if (!mostRecent || !mostRecent.endDate) return null;
+    const daysSinceEnded = differenceInCalendarDays(new Date(), fromISO(mostRecent.endDate));
+    return daysSinceEnded <= 3 ? mostRecent : null;
+  }, [activePeriod, periodsQuery.data]);
   const dayOfPeriod = activePeriod
     ? differenceInCalendarDays(selectedDateObj, fromISO(activePeriod.startDate)) + 1
     : null;
@@ -170,6 +184,7 @@ export function LogView() {
   const deletePeriod = useDeletePeriod();
   const startPeriod = useStartPeriod();
   const endPeriod = useEndPeriod();
+  const reopenPeriod = useReopenPeriod();
   const logPeriodDay = useLogPeriodDay();
   const updatePeriodDay = useUpdatePeriodDay();
   const deletePeriodDay = useDeletePeriodDay();
@@ -245,9 +260,26 @@ export function LogView() {
   }
 
   async function handleEndPeriod() {
+    const endedPeriodId = activePeriod?.id;
     try {
-      await endPeriod.mutateAsync({ date });
-      toast.success("Period ended");
+      await endPeriod.mutateAsync(); // no date passed — backend anchors to the actual last logged day
+      toast.success("Period ended", {
+        action: endedPeriodId
+          ? {
+              label: "Undo",
+              onClick: async () => {
+                try {
+                  await reopenPeriod.mutateAsync(endedPeriodId);
+                  toast.success("Period reopened");
+                } catch (e) {
+                  toast.error("Couldn't undo", {
+                    description: e instanceof Error ? e.message : undefined,
+                  });
+                }
+              },
+            }
+          : undefined,
+      });
     } catch (e) {
       toast.error("Couldn't end period", {
         description: e instanceof Error ? e.message : undefined,
@@ -274,6 +306,17 @@ export function LogView() {
       toast.success("Day removed");
     } catch (e) {
       toast.error("Couldn't remove day", {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
+  }
+
+  async function handleReopenPeriod(periodId: string) {
+    try {
+      await reopenPeriod.mutateAsync(periodId);
+      toast.success("Period reopened");
+    } catch (e) {
+      toast.error("Couldn't reopen period", {
         description: e instanceof Error ? e.message : undefined,
       });
     }
@@ -485,6 +528,18 @@ export function LogView() {
                 Tap a flow level to start &amp; log day 1
               </p>
             </div>
+            {recentlyEndedPeriod && (
+              <button
+                type="button"
+                onClick={() => handleReopenPeriod(recentlyEndedPeriod.id)}
+                disabled={reopenPeriod.isPending}
+                className="w-full text-center text-xs text-muted-foreground hover:text-primary underline underline-offset-2"
+              >
+                {reopenPeriod.isPending
+                  ? "Reopening..."
+                  : `Ended by mistake? Reopen period from ${formatNice(recentlyEndedPeriod.startDate)}`}
+              </button>
+            )}
           </div>
         ) : (
           // --- Active period: per-day flow picker, like symptoms/mood ---
@@ -512,9 +567,24 @@ export function LogView() {
                     size="sm"
                     className="h-7 text-xs px-2.5 bg-femora-gradient text-white border-0"
                     onClick={async () => {
+                      const endedPeriodId = activePeriod.id;
                       try {
                         await endPeriod.mutateAsync({ date: activePeriod.lastLoggedDate ?? undefined });
-                        toast.success("Period ended");
+                        toast.success("Period ended", {
+                          action: {
+                            label: "Undo",
+                            onClick: async () => {
+                              try {
+                                await reopenPeriod.mutateAsync(endedPeriodId);
+                                toast.success("Period reopened");
+                              } catch (e) {
+                                toast.error("Couldn't undo", {
+                                  description: e instanceof Error ? e.message : undefined,
+                                });
+                              }
+                            },
+                          },
+                        });
                       } catch (e) {
                         toast.error("Couldn't end period", {
                           description: e instanceof Error ? e.message : undefined,
