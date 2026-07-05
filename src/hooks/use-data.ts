@@ -341,7 +341,7 @@ export function useStats() {
 
 // ---- Insights ----
 export function useInsights() {
-  return useQuery<{ insights: import("@/lib/insights").Insight[] }>({
+  return useQuery<import("@/lib/insights").InsightsResult>({
     queryKey: ["insights"],
     queryFn: () => fetchJson("/api/insights"),
     staleTime: 5 * 60 * 1000,

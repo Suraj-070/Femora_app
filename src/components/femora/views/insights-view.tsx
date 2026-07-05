@@ -1,6 +1,16 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 import {
   Sparkles,
   RefreshCw,
@@ -10,6 +20,8 @@ import {
   Activity,
   CheckCircle2,
   Info,
+  Droplets,
+  Clock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,7 +33,7 @@ import { GlassCard } from "@/components/femora/shared/glass-card";
 import { DynamicIcon } from "@/components/femora/shared/dynamic-icon";
 
 import { useInsights, useStats, usePrediction } from "@/hooks/use-data";
-import type { Insight } from "@/lib/insights";
+import type { Insight, FlowCurvePoint } from "@/lib/insights";
 import { cn } from "@/lib/utils";
 
 // ---- Tone → gradient & accent mapping ----
@@ -71,13 +83,60 @@ const TYPE_META: Record<Insight["type"], { label: string; className: string }> =
   },
 };
 
+function relativeTime(iso?: string): string | null {
+  if (!iso) return null;
+  const then = new Date(iso).getTime();
+  const diffMs = Date.now() - then;
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 1) return "Updated just now";
+  if (mins < 60) return `Updated ${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `Updated ${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return `Updated ${days}d ago`;
+}
+
+// Pick the single most useful insight to feature. Priority: correlation /
+// pattern types carry the most "new to you" information; tips are generic
+// and make weaker heroes.
+function pickHero(insights: Insight[]): { hero: Insight | null; rest: Insight[] } {
+  if (insights.length === 0) return { hero: null, rest: [] };
+  const priority: Record<Insight["type"], number> = {
+    pattern: 0,
+    symptom: 1,
+    trend: 2,
+    regularity: 3,
+    mood: 4,
+    tip: 5,
+  };
+  const sorted = [...insights].sort((a, b) => priority[a.type] - priority[b.type]);
+  const hero = sorted[0];
+  return { hero, rest: insights.filter((i) => i.id !== hero.id) };
+}
+
+const FILTER_TYPES: { value: Insight["type"] | "all"; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "pattern", label: "Patterns" },
+  { value: "symptom", label: "Symptoms" },
+  { value: "mood", label: "Mood" },
+  { value: "trend", label: "Trends" },
+  { value: "regularity", label: "Regularity" },
+  { value: "tip", label: "Tips" },
+];
+
 export function InsightsView() {
   const { data, isLoading, isError, refetch, isFetching } = useInsights();
   const { data: stats } = useStats();
   const { data: prediction } = usePrediction();
+  const [filter, setFilter] = useState<Insight["type"] | "all">("all");
 
   const insights = data?.insights ?? [];
   const fetching = isFetching && !isLoading;
+  const freshness = relativeTime(data?.generatedAt);
+
+  const { hero, rest } = useMemo(() => pickHero(insights), [insights]);
+  const availableTypes = useMemo(() => new Set(rest.map((i) => i.type)), [rest]);
+  const visibleRest = filter === "all" ? rest : rest.filter((i) => i.type === filter);
 
   return (
     <div className="view-enter px-4 sm:px-6 pb-24 space-y-4">
@@ -102,6 +161,11 @@ export function InsightsView() {
               <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">
                 Personalized patterns from your cycle data.
               </p>
+              {freshness && !isLoading && (
+                <p className="text-[11px] text-muted-foreground/70 mt-1 flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> {freshness}
+                </p>
+              )}
             </div>
           </div>
 
@@ -149,11 +213,46 @@ export function InsightsView() {
         </GlassCard>
       )}
 
+      {/* ---- Flow curve chart ---- */}
+      {!isLoading && !isError && data && (data.flowCurve?.length ?? 0) >= 3 && (
+        <FlowCurveChart data={data.flowCurve} />
+      )}
+
+      {/* ---- Hero insight ---- */}
+      {!isLoading && !isError && hero && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <HeroInsightCard insight={hero} />
+        </motion.div>
+      )}
+
+      {/* ---- Filter chips (only if there's more than one type to filter) ---- */}
+      {!isLoading && !isError && rest.length > 1 && availableTypes.size > 1 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1 no-scrollbar">
+          {FILTER_TYPES.filter((f) => f.value === "all" || availableTypes.has(f.value as Insight["type"])).map(
+            (f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setFilter(f.value)}
+                className={cn(
+                  "shrink-0 h-8 px-3.5 rounded-full text-xs font-medium border transition-colors",
+                  filter === f.value
+                    ? "bg-femora-gradient text-white border-transparent"
+                    : "bg-transparent border-border/60 text-muted-foreground hover:border-primary/40"
+                )}
+              >
+                {f.label}
+              </button>
+            )
+          )}
+        </div>
+      )}
+
       {/* ---- Insight cards ---- */}
       {!isLoading && !isError && insights.length > 0 && (
         <div className="space-y-3">
           <AnimatePresence mode="popLayout">
-            {insights.map((insight, index) => (
+            {visibleRest.map((insight, index) => (
               <motion.div
                 key={insight.id}
                 layout
@@ -220,6 +319,77 @@ export function InsightsView() {
 // ============================================================
 // Sub-components
 // ============================================================
+
+function FlowCurveChart({ data }: { data: FlowCurvePoint[] }) {
+  const chartData = data.map((p) => ({ day: `D${p.day}`, intensity: p.avgIntensity }));
+  const intensityLabel = (v: number) =>
+    v >= 3.5 ? "Heavy" : v >= 2.5 ? "Medium" : v >= 1.5 ? "Light" : "Spotting";
+
+  return (
+    <GlassCard className="p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+          <Droplets className="w-4 h-4" />
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold leading-tight">Flow pattern by cycle day</h3>
+          <p className="text-[11px] text-muted-foreground">Average across all your logged periods</p>
+        </div>
+      </div>
+      <div className="h-40 -ml-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} className="opacity-20" />
+            <XAxis dataKey="day" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis domain={[0, 4]} hide />
+            <Tooltip
+              formatter={(value: number) => [intensityLabel(value), "Flow"]}
+              contentStyle={{ borderRadius: 12, fontSize: 12, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}
+            />
+            <Bar dataKey="intensity" radius={[6, 6, 0, 0]} fill="url(#flowGradient)" />
+            <defs>
+              <linearGradient id="flowGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#fb7185" />
+                <stop offset="100%" stopColor="#f472b6" />
+              </linearGradient>
+            </defs>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </GlassCard>
+  );
+}
+
+function HeroInsightCard({ insight }: { insight: Insight }) {
+  const gradient = TONE_GRADIENT[insight.tone] ?? TONE_GRADIENT.info;
+  const typeMeta = TYPE_META[insight.type] ?? TYPE_META.tip;
+
+  return (
+    <GlassCard glow className="p-6 relative overflow-hidden">
+      <div
+        aria-hidden
+        className="absolute -bottom-16 -left-10 w-48 h-48 rounded-full bg-femora-gradient opacity-10 blur-3xl pointer-events-none"
+      />
+      <div className="relative">
+        <div className="flex items-center gap-2 mb-3">
+          <div
+            className={cn(
+              "w-11 h-11 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white shadow-md shrink-0",
+              gradient
+            )}
+          >
+            <DynamicIcon name={insight.icon} className="w-5 h-5" strokeWidth={2.2} />
+          </div>
+          <Badge variant="outline" className={cn("h-5 text-[10px] uppercase tracking-wide font-semibold px-1.5", typeMeta.className)}>
+            {typeMeta.label}
+          </Badge>
+        </div>
+        <h3 className="text-lg font-semibold tracking-tight leading-snug">{insight.title}</h3>
+        <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{insight.description}</p>
+      </div>
+    </GlassCard>
+  );
+}
 
 function InsightCard({ insight }: { insight: Insight }) {
   const gradient = TONE_GRADIENT[insight.tone] ?? TONE_GRADIENT.info;

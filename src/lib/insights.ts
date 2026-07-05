@@ -14,6 +14,20 @@ export interface Insight {
   tone: "info" | "positive" | "warning";
 }
 
+export interface FlowCurvePoint {
+  day: number;
+  avgIntensity: number;
+}
+
+export interface InsightsResult {
+  insights: Insight[];
+  periodCount: number;
+  flowCurve: FlowCurvePoint[];
+  avgSeverityHeavyFlowDays: number | null;
+  avgSeverityLightFlowDays: number | null;
+  generatedAt: string;
+}
+
 function startOfDay(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
@@ -26,6 +40,18 @@ function diffDays(a: Date, b: Date): number {
 
 function toDateKey(d: Date | string): string {
   return startOfDay(new Date(d)).toISOString().slice(0, 10);
+}
+
+// Truncates at a word boundary instead of chopping mid-word — raw .slice()
+// on AI-generated text produces things like "consider starti" which reads
+// as a bug even though the underlying content is fine.
+function truncateClean(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  const cut = text.slice(0, maxLen);
+  const lastSpace = cut.lastIndexOf(" ");
+  const lastSentenceEnd = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  const boundary = lastSentenceEnd > maxLen * 0.6 ? lastSentenceEnd + 1 : lastSpace > 0 ? lastSpace : maxLen;
+  return cut.slice(0, boundary).trimEnd() + (lastSentenceEnd > maxLen * 0.6 ? "" : "…");
 }
 
 // Accept any object from Prisma — avoids type mismatch with generated client
@@ -228,6 +254,7 @@ Rules:
 - Return ONLY valid JSON. No markdown, no commentary outside JSON.
 - The JSON must be an object: { "insights": [ ... ] }
 - Generate between 3 and 6 insights.
+- Each "description" must be a complete thought under 220 characters — finish the sentence, don't trail off. Never write a description that needs more room than that; say less instead.
 - Each insight must be: { "type": "pattern"|"trend"|"regularity"|"symptom"|"mood"|"tip", "title": string, "description": string, "icon": string, "tone": "info"|"positive"|"warning" }
 - "icon" must be a single lucide-react icon name like "Sparkles", "TrendingDown", "TrendingUp", "CalendarHeart", "HeartPulse", "Brain", "Smile", "Activity", "Flower2", "Moon", "Sun", "Droplets".
 - Titles: max 6 words. Descriptions: max 2 sentences, warm and non-alarmist. Avoid medical diagnosis.
@@ -244,9 +271,24 @@ Rules:
 - Never invent numbers not present in the data. If unsure, speak generally.
 - Do not use emoji in the text.`;
 
-export async function generateInsights(userId: string): Promise<Insight[]> {
+export async function generateInsights(userId: string): Promise<InsightsResult> {
   const summary = await buildSummary(userId);
+  const insights = await generateInsightsList(userId, summary);
 
+  return {
+    insights,
+    periodCount: summary.periodCount,
+    flowCurve: summary.flowCurve,
+    avgSeverityHeavyFlowDays: summary.avgSeverityHeavyFlowDays,
+    avgSeverityLightFlowDays: summary.avgSeverityLightFlowDays,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+async function generateInsightsList(
+  userId: string,
+  summary: Awaited<ReturnType<typeof buildSummary>>
+): Promise<Insight[]> {
   const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
   const completion = await groq.chat.completions.create({
@@ -282,8 +324,8 @@ export async function generateInsights(userId: string): Promise<Insight[]> {
     .map((i, idx) => ({
       id: `ai-${idx}-${Date.now()}`,
       type: (i.type as Insight["type"]) ?? "tip",
-      title: String(i.title).slice(0, 80),
-      description: String(i.description).slice(0, 280),
+      title: truncateClean(String(i.title), 80),
+      description: truncateClean(String(i.description), 280),
       icon: String(i.icon ?? "Sparkles"),
       tone: (i.tone as Insight["tone"]) ?? "info",
     }));

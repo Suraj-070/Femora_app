@@ -6,10 +6,13 @@ export async function GET() {
   const userId = await getUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
-    const insights = await generateInsights(userId);
-    return NextResponse.json({ insights });
+    const result = await generateInsights(userId);
+    return NextResponse.json(result);
   } catch (e) {
     console.error("insights error", e);
-    return NextResponse.json({ error: "Failed to generate insights", insights: [] }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to generate insights", insights: [], periodCount: 0, flowCurve: [], avgSeverityHeavyFlowDays: null, avgSeverityLightFlowDays: null, generatedAt: new Date().toISOString() },
+      { status: 500 }
+    );
   }
 }
