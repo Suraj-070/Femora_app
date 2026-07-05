@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
@@ -109,18 +109,14 @@ export function CalendarView() {
   const { data: moods = [], isLoading: moodsLoading } = useMoods(fromStr, toStr);
   const { data: prediction } = usePrediction();
 
-  // Real per-day flow (new model) takes priority over the legacy single
-  // flow-per-period value, so old un-migrated periods still show *something*.
-  const flowByDate = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const pd of periodDays) m.set(toISODate(fromISO(pd.date)), pd.flow);
-    return m;
-  }, [periodDays]);
+  const periodById = useMemo(() => new Map(periods.map((p) => [p.id, p])), [periods]);
 
-  const flowForDate = useCallback(
-    (iso: string, fallbackFlow: string): string => flowByDate.get(iso) ?? fallbackFlow,
-    [flowByDate]
-  );
+  // Periods that already have real PeriodDay rows — for these, PeriodDay data
+  // is the single source of truth for which days show up (previously this
+  // blindly expanded Period.startDate..endDate, which only ever showed day 1
+  // for an active period, and silently gap-filled deleted days for a closed
+  // one — both wrong once a day's actually deleted or not yet logged).
+  const migratedPeriodIds = useMemo(() => new Set(periodDays.map((pd) => pd.periodId)), [periodDays]);
 
   // Show skeleton only on very first load (no data yet)
   const showSkeleton =
@@ -129,11 +125,22 @@ export function CalendarView() {
   // --- O(1) lookup maps ---
   const periodByDay = useMemo(() => {
     const m = new Map<string, Period>();
+    // Legacy periods with zero PeriodDay rows (pre-migration data) — fall
+    // back to range expansion so old entries don't just disappear.
     for (const p of periods) {
-      for (const d of expandPeriodDays(p)) m.set(d, { ...p, flow: flowForDate(d, p.flow) as Period["flow"] });
+      if (migratedPeriodIds.has(p.id)) continue;
+      for (const d of expandPeriodDays(p)) m.set(d, p);
+    }
+    // Real per-day data is authoritative: only days with an actual logged
+    // PeriodDay row show up, with that day's own real flow value.
+    for (const pd of periodDays) {
+      const parent = periodById.get(pd.periodId);
+      if (!parent) continue;
+      const iso = toISODate(fromISO(pd.date));
+      m.set(iso, { ...parent, flow: pd.flow as Period["flow"] });
     }
     return m;
-  }, [periods, flowForDate]);
+  }, [periods, periodDays, migratedPeriodIds, periodById]);
 
   const symptomsByDay = useMemo(() => {
     const m = new Map<string, Symptom[]>();
@@ -232,14 +239,18 @@ export function CalendarView() {
     };
 
     for (const p of periods) {
+      if (migratedPeriodIds.has(p.id)) continue; // real data below is authoritative
       for (const d of expandPeriodDays(p)) {
         if (d < startISO || d > endISO) continue;
-        ensure(d).period = { ...p, flow: flowForDate(d, p.flow) as Period["flow"] };
+        ensure(d).period = p;
       }
     }
     for (const pd of periodDays) {
       const k = toISODate(fromISO(pd.date));
       if (k < startISO || k > endISO) continue;
+      const parent = periodById.get(pd.periodId);
+      if (!parent) continue;
+      ensure(k).period = { ...parent, flow: pd.flow as Period["flow"] };
       ensure(k).periodDayId = pd.id;
     }
     for (const s of symptoms) {
@@ -254,7 +265,7 @@ export function CalendarView() {
     }
 
     return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
-  }, [periods, periodDays, symptoms, moods, month, flowForDate]);
+  }, [periods, periodDays, symptoms, moods, month, migratedPeriodIds, periodById]);
 
   const variants = {
     enter: (dir: number) => ({ opacity: 0, x: dir > 0 ? 28 : dir < 0 ? -28 : 0 }),

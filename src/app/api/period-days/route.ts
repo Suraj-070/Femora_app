@@ -111,5 +111,15 @@ export async function DELETE(req: Request) {
   }
   await db.periodDay.delete({ where: { id } });
   await recalcPeriodRange(existing.periodId);
+
+  // If that was the last logged day, the Period row is now pointless —
+  // remove it entirely instead of leaving a dateless ghost period behind
+  // (this matters most for an active period, which would otherwise block
+  // "Start Period" forever with nothing to show for it).
+  const remainingDays = await db.periodDay.count({ where: { periodId: existing.periodId } });
+  if (remainingDays === 0) {
+    await db.period.delete({ where: { id: existing.periodId } }).catch(() => {});
+  }
+
   return NextResponse.json({ ok: true });
 }

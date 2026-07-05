@@ -90,6 +90,8 @@ export function useDeletePeriod() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["periods"] });
+      qc.invalidateQueries({ queryKey: ["activePeriod"] });
+      qc.invalidateQueries({ queryKey: ["periodDays"] });
       qc.invalidateQueries({ queryKey: ["prediction"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
       qc.invalidateQueries({ queryKey: ["insights"] });
@@ -119,6 +121,7 @@ export function useStartPeriod() {
       qc.invalidateQueries({ queryKey: ["periodDays"] });
       qc.invalidateQueries({ queryKey: ["prediction"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["insights"] });
     },
   });
 }
@@ -132,8 +135,10 @@ export function useEndPeriod() {
       qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["periods"] });
       qc.invalidateQueries({ queryKey: ["activePeriod"] });
+      qc.invalidateQueries({ queryKey: ["periodDays"] });
       qc.invalidateQueries({ queryKey: ["prediction"] });
       qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["insights"] });
     },
   });
 }
