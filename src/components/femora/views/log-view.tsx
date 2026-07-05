@@ -163,7 +163,6 @@ export function LogView() {
       });
       queryClient.invalidateQueries({ queryKey: ["activePeriod"] });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePeriodQuery.data?.autoClosedByFailsafe]);
 
   const symptomsOnDate: Symptom[] = useMemo(() => {
@@ -262,7 +261,7 @@ export function LogView() {
   async function handleEndPeriod() {
     const endedPeriodId = activePeriod?.id;
     try {
-      await endPeriod.mutateAsync(); // no date passed — backend anchors to the actual last logged day
+      await endPeriod.mutateAsync(undefined); // no date passed — backend anchors to the actual last logged day
       toast.success("Period ended", {
         action: endedPeriodId
           ? {
