@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { getUserId } from "@/lib/session";
+import { recalcPeriodRange } from "@/lib/period-range";
 
 const flowEnum = z.enum(["spotting", "light", "medium", "heavy"]);
 
@@ -71,6 +72,8 @@ export async function POST(req: Request) {
     create: { periodId: activePeriod.id, userId, date: day, flow, notes: notes ?? null },
   });
 
+  await recalcPeriodRange(activePeriod.id);
+
   return NextResponse.json(periodDay, { status: 201 });
 }
 
@@ -107,5 +110,6 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   await db.periodDay.delete({ where: { id } });
+  await recalcPeriodRange(existing.periodId);
   return NextResponse.json({ ok: true });
 }

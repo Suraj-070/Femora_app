@@ -38,6 +38,10 @@ export interface Period {
   createdAt: string;
   updatedAt: string;
   days?: PeriodDay[];
+  lastLoggedDate?: string;
+  daysSinceLastLog?: number;
+  suggestEnd?: boolean;
+  autoClosedByFailsafe?: boolean;
 }
 
 export interface PeriodDay {

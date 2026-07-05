@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar as CalendarIcon,
@@ -61,6 +62,7 @@ import {
   useCreateMood,
   useUpdateMood,
   useDeleteMood,
+  useStats,
 } from "@/hooks/use-data";
 import type { Flow, Period, Symptom, MoodEntry } from "@/lib/types";
 import {
@@ -118,6 +120,7 @@ export function LogView() {
   // --- Data hooks ---
   const periodsQuery = usePeriods();
   const activePeriodQuery = useActivePeriod();
+  const statsQuery = useStats();
   const periodDayQuery = usePeriodDays(date, date);
   const symptomsQuery = useSymptoms(date, date);
   const moodsQuery = useMoods(date, date);
@@ -127,11 +130,27 @@ export function LogView() {
     return all.find((p) => isSameDay(fromISO(p.startDate), selectedDateObj));
   }, [periodsQuery.data, selectedDateObj]);
 
-  const activePeriod = activePeriodQuery.data ?? null;
+  const activePeriod = activePeriodQuery.data?.autoClosedByFailsafe ? null : activePeriodQuery.data ?? null;
   const periodDayOnDate = (periodDayQuery.data ?? [])[0] ?? null;
   const dayOfPeriod = activePeriod
     ? differenceInCalendarDays(selectedDateObj, fromISO(activePeriod.startDate)) + 1
     : null;
+
+  const [dismissedSuggestEnd, setDismissedSuggestEnd] = useState(false);
+  const queryClient = useQueryClient();
+
+  // #4 hard failsafe already closed a genuinely-abandoned period server-side —
+  // just let the person know so it isn't a silent surprise later, then
+  // refetch so the UI drops back to "no active period" cleanly.
+  useEffect(() => {
+    if (activePeriodQuery.data?.autoClosedByFailsafe) {
+      toast.info("Auto-ended a period that had no logs for 10+ days", {
+        description: `Ended on ${formatNice(activePeriodQuery.data.lastLoggedDate ?? activePeriodQuery.data.endDate ?? "")}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["activePeriod"] });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePeriodQuery.data?.autoClosedByFailsafe]);
 
   const symptomsOnDate: Symptom[] = useMemo(() => {
     const all = symptomsQuery.data ?? [];
@@ -470,6 +489,53 @@ export function LogView() {
         ) : (
           // --- Active period: per-day flow picker, like symptoms/mood ---
           <div className="space-y-3">
+            <p className="text-xs text-muted-foreground -mt-1">
+              Day {dayOfPeriod} of period · started {formatNice(activePeriod.startDate)}
+            </p>
+
+            {/* #1 auto-suggest end: nudge only, never forces anything */}
+            {activePeriod.suggestEnd && !dismissedSuggestEnd && (
+              <div className="flex items-center justify-between gap-2 rounded-xl bg-accent/60 px-3 py-2.5 text-xs">
+                <span className="text-foreground/80">
+                  No flow logged since {formatNice(activePeriod.lastLoggedDate ?? activePeriod.startDate)} — did your period end then?
+                </span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs px-2.5"
+                    onClick={() => setDismissedSuggestEnd(true)}
+                  >
+                    Still going
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs px-2.5 bg-femora-gradient text-white border-0"
+                    onClick={async () => {
+                      try {
+                        await endPeriod.mutateAsync({ date: activePeriod.lastLoggedDate ?? undefined });
+                        toast.success("Period ended");
+                      } catch (e) {
+                        toast.error("Couldn't end period", {
+                          description: e instanceof Error ? e.message : undefined,
+                        });
+                      }
+                    }}
+                  >
+                    Yes, ended
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* #2 length nudge: awareness only, never blocks logging */}
+            {dayOfPeriod !== null &&
+              statsQuery.data?.averagePeriodLength &&
+              dayOfPeriod > Math.round(statsQuery.data.averagePeriodLength) && (
+                <p className="text-xs text-muted-foreground italic">
+                  That&apos;s longer than your usual ~{Math.round(statsQuery.data.averagePeriodLength)} days.
+                </p>
+              )}
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">
                 Flow for {formatNice(date)}

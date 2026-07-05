@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, useCallback, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
@@ -13,15 +13,38 @@ import {
   Plus,
   Smile,
   X,
+  Pencil,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { GlassCard } from "@/components/femora/shared/glass-card";
 import { cn } from "@/lib/utils";
-import { usePeriods, usePeriodDays, useSymptoms, useMoods, usePrediction } from "@/hooks/use-data";
+import {
+  usePeriods,
+  usePeriodDays,
+  useDeletePeriodDay,
+  useSymptoms,
+  useDeleteSymptom,
+  useMoods,
+  useDeleteMood,
+  usePrediction,
+} from "@/hooks/use-data";
 import {
   FLOW_LEVELS,
   flowLabel,
@@ -94,9 +117,10 @@ export function CalendarView() {
     return m;
   }, [periodDays]);
 
-  function flowForDate(iso: string, fallbackFlow: string): string {
-    return flowByDate.get(iso) ?? fallbackFlow;
-  }
+  const flowForDate = useCallback(
+    (iso: string, fallbackFlow: string): string => flowByDate.get(iso) ?? fallbackFlow,
+    [flowByDate]
+  );
 
   // Show skeleton only on very first load (no data yet)
   const showSkeleton =
@@ -109,7 +133,7 @@ export function CalendarView() {
       for (const d of expandPeriodDays(p)) m.set(d, { ...p, flow: flowForDate(d, p.flow) as Period["flow"] });
     }
     return m;
-  }, [periods, flowByDate]);
+  }, [periods, flowForDate]);
 
   const symptomsByDay = useMemo(() => {
     const m = new Map<string, Symptom[]>();
@@ -176,11 +200,28 @@ export function CalendarView() {
     setView("log");
   };
 
+  const deletePeriodDay = useDeletePeriodDay();
+  const deleteSymptom = useDeleteSymptom();
+  const deleteMood = useDeleteMood();
+
+  async function handleDeleteDayEntry(entry: {
+    date: string;
+    periodDayId?: string;
+    symptoms: Symptom[];
+    moods: MoodEntry[];
+  }) {
+    const jobs: Promise<unknown>[] = [];
+    if (entry.periodDayId) jobs.push(deletePeriodDay.mutateAsync(entry.periodDayId));
+    for (const s of entry.symptoms) jobs.push(deleteSymptom.mutateAsync(s.id));
+    for (const m of entry.moods) jobs.push(deleteMood.mutateAsync(m.id));
+    await Promise.allSettled(jobs);
+  }
+
   // --- list view entries (current month, any logs) ---
   const listEntries = useMemo(() => {
     const map = new Map<
       string,
-      { date: string; period?: Period; symptoms: Symptom[]; moods: MoodEntry[] }
+      { date: string; period?: Period; periodDayId?: string; symptoms: Symptom[]; moods: MoodEntry[] }
     >();
     const startISO = toISODate(startOfMonth(month));
     const endISO = toISODate(endOfMonth(month));
@@ -196,6 +237,11 @@ export function CalendarView() {
         ensure(d).period = { ...p, flow: flowForDate(d, p.flow) as Period["flow"] };
       }
     }
+    for (const pd of periodDays) {
+      const k = toISODate(fromISO(pd.date));
+      if (k < startISO || k > endISO) continue;
+      ensure(k).periodDayId = pd.id;
+    }
     for (const s of symptoms) {
       const k = toISODate(fromISO(s.date));
       if (k < startISO || k > endISO) continue;
@@ -208,7 +254,7 @@ export function CalendarView() {
     }
 
     return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
-  }, [periods, symptoms, moods, month, flowByDate]);
+  }, [periods, periodDays, symptoms, moods, month, flowForDate]);
 
   const variants = {
     enter: (dir: number) => ({ opacity: 0, x: dir > 0 ? 28 : dir < 0 ? -28 : 0 }),
@@ -529,16 +575,21 @@ export function CalendarView() {
                   {listEntries.map((entry) => {
                     const isToday = entry.date === today;
                     return (
-                      <motion.button
+                      <motion.div
                         key={entry.date}
                         layout
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -6 }}
                         transition={{ duration: 0.2 }}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => openLog(entry.date)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") openLog(entry.date);
+                        }}
                         className={cn(
-                          "group w-full text-left rounded-2xl p-3.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary border",
+                          "group w-full text-left rounded-2xl p-3.5 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary border",
                           entry.period
                             ? "bg-primary/5 border-primary/20 hover:bg-primary/10"
                             : "bg-accent/40 border-transparent hover:bg-accent/70"
@@ -570,7 +621,52 @@ export function CalendarView() {
                               )}
                             </div>
                           </div>
-                          <ChevronRight className="size-4 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openLog(entry.date);
+                              }}
+                              className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                              aria-label="Edit this day"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-8 h-8 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                  aria-label="Delete this day"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete this day&apos;s log?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This removes everything logged for {format(fromISO(entry.date), "EEEE, MMM d")}
+                                    {entry.period ? " — flow, " : " — "}
+                                    {entry.symptoms.length > 0 ? "symptoms, " : ""}
+                                    {entry.moods.length > 0 ? "and mood" : ""}. This can&apos;t be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteDayEntry(entry)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                            <ChevronRight className="size-4 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
+                          </div>
                         </div>
 
                         <div className="space-y-1.5 pl-0.5">
@@ -624,7 +720,7 @@ export function CalendarView() {
                             <p className="text-xs text-muted-foreground italic">No details logged</p>
                           )}
                         </div>
-                      </motion.button>
+                      </motion.div>
                     );
                   })}
                 </AnimatePresence>
