@@ -192,6 +192,17 @@ export function useDeletePeriodDay() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => fetchJson(`/api/period-days?id=${id}`, { method: "DELETE" }),
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: ["periodDays"] });
+      const snapshots = qc.getQueriesData<PeriodDay[]>({ queryKey: ["periodDays"] });
+      qc.setQueriesData<PeriodDay[]>({ queryKey: ["periodDays"] }, (old) =>
+        old ? old.filter((d) => d.id !== id) : old
+      );
+      return { snapshots };
+    },
+    onError: (_err, _id, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["periodDays"] });
@@ -250,6 +261,17 @@ export function useDeleteSymptom() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => fetchJson(`/api/symptoms?id=${id}`, { method: "DELETE" }),
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: ["symptoms"] });
+      const snapshots = qc.getQueriesData<Symptom[]>({ queryKey: ["symptoms"] });
+      qc.setQueriesData<Symptom[]>({ queryKey: ["symptoms"] }, (old) =>
+        old ? old.filter((s) => s.id !== id) : old
+      );
+      return { snapshots };
+    },
+    onError: (_err, _id, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["symptoms"] });
@@ -305,6 +327,17 @@ export function useDeleteMood() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => fetchJson(`/api/moods?id=${id}`, { method: "DELETE" }),
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: ["moods"] });
+      const snapshots = qc.getQueriesData<MoodEntry[]>({ queryKey: ["moods"] });
+      qc.setQueriesData<MoodEntry[]>({ queryKey: ["moods"] }, (old) =>
+        old ? old.filter((m) => m.id !== id) : old
+      );
+      return { snapshots };
+    },
+    onError: (_err, _id, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["moods"] });
