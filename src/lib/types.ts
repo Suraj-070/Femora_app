@@ -79,6 +79,7 @@ export interface Settings {
   userId: string;
   theme: "light" | "dark" | "system";
   pinEnabled: boolean;
+  pinSet: boolean;
   // Health profile
   onboardingDone: boolean;
   ageRange: string | null;

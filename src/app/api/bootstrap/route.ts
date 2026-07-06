@@ -70,6 +70,7 @@ export async function GET() {
     createdAt: new Date(),
     updatedAt: new Date(),
   };
+  const { pin: _pin, ...settingsForClient } = settingsData;
 
   return NextResponse.json({
     periods,
@@ -77,6 +78,6 @@ export async function GET() {
     todayMoods,
     prediction,
     stats,
-    settings: settingsData,
+    settings: { ...settingsForClient, pinSet: !!settingsData.pin },
   });
 }

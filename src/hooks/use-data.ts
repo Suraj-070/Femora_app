@@ -418,6 +418,16 @@ export function useSettings() {
   });
 }
 
+export function useVerifyPin() {
+  return useMutation({
+    mutationFn: (pin: string) =>
+      fetchJson("/api/settings/verify-pin", {
+        method: "POST",
+        body: JSON.stringify({ pin }),
+      }) as Promise<{ valid: boolean; error?: string }>,
+  });
+}
+
 export type UpdateSettingsData = {
   theme?: "light" | "dark" | "system";
   pinEnabled?: boolean;

@@ -11,6 +11,7 @@ import { StatsView } from "@/components/femora/views/stats-view";
 import { InsightsView } from "@/components/femora/views/insights-view";
 import { SettingsView } from "@/components/femora/views/settings-view";
 import { OnboardingView } from "@/components/femora/onboarding-view";
+import { LockScreen } from "@/components/femora/lock-screen";
 import { AnimatePresence, motion } from "framer-motion";
 import { useBootstrap } from "@/hooks/use-data";
 import type { ViewKey } from "@/store/app-store";
@@ -22,11 +23,28 @@ interface AppShellProps {
 export function AppShell({ user }: AppShellProps) {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
+  const unlocked = useAppStore((s) => s.unlocked);
+  const setUnlocked = useAppStore((s) => s.setUnlocked);
 
   // Single bootstrap call — loads all data at once
   const { data: bootstrap, isLoading } = useBootstrap();
 
   const showOnboarding = !isLoading && bootstrap && !bootstrap.settings.onboardingDone;
+  const pinRequired = !!bootstrap?.settings.pinEnabled && !!bootstrap?.settings.pinSet;
+  const showLockScreen = !isLoading && pinRequired && !unlocked;
+
+  // Re-lock the moment the app is backgrounded — this is the part that
+  // actually matters on mobile: switching apps, locking the phone, or
+  // swiping to the home screen should require the PIN again on return,
+  // not just on a fresh cold start.
+  useEffect(() => {
+    if (!pinRequired) return;
+    const handleVisibility = () => {
+      if (document.hidden) setUnlocked(false);
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [pinRequired, setUnlocked]);
 
   // Android back button handling
   useEffect(() => {
@@ -52,6 +70,10 @@ export function AppShell({ user }: AppShellProps) {
         <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       </div>
     );
+  }
+
+  if (showLockScreen) {
+    return <LockScreen />;
   }
 
   if (showOnboarding) {
