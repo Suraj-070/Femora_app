@@ -47,31 +47,31 @@ export interface Period {
 export interface PeriodDay {
   id: string;
   periodId: string;
-  userId: string;
+  userId?: string;
   date: string;
   flow: Flow;
   notes: string | null;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Symptom {
   id: string;
-  userId: string;
+  userId?: string;
   date: string;
   symptomName: string;
   severity: number;
   note: string | null;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface MoodEntry {
   id: string;
-  userId: string;
+  userId?: string;
   date: string;
   mood: Mood;
   note: string | null;
-  createdAt: string;
+  createdAt?: string;
 }
 
 export interface Settings {

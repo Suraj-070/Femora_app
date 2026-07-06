@@ -28,14 +28,17 @@ export function AppShell({ user }: AppShellProps) {
   const isMobile = useIsMobile();
 
   // Settings is a single small row — fetches independently and much faster
-  // than the full bootstrap join (periods, stats, prediction, etc). The PIN
-  // check only needs this, so it doesn't have to wait behind everything else.
+  // than the full bootstrap join (periods, stats, prediction, etc). Both the
+  // PIN check and onboarding check only need this, so neither has to wait
+  // behind everything else.
   const { data: settings, isLoading: settingsLoading } = useSettings();
-  // Heavy data — runs in parallel, in the background, while the lock screen
-  // (if needed) is already showing.
-  const { data: bootstrap, isLoading: bootstrapLoading } = useBootstrap();
+  // Heavy data — every view fetches its own slice independently and shows
+  // its own skeleton while loading, so this doesn't need to block the shell
+  // at all. Still called here so its cache warms up immediately on mount,
+  // benefiting whichever view renders first.
+  useBootstrap();
 
-  const showOnboarding = !bootstrapLoading && bootstrap && !bootstrap.settings.onboardingDone;
+  const showOnboarding = !settingsLoading && !!settings && !settings.onboardingDone;
   // Mobile-only: a PIN lock makes sense on a phone that can be picked up by
   // someone else. On desktop it's just friction for no real benefit, so the
   // lock screen never shows there even if PIN lock is toggled on.
@@ -62,8 +65,7 @@ export function AppShell({ user }: AppShellProps) {
 
   // Fast path: as soon as we know whether a PIN is needed, decide — don't
   // make the person wait behind the full (heavy) data load just to see the
-  // PIN screen. If unlocked or not required, fall through to the normal
-  // loading spinner for the actual app data.
+  // PIN screen or the app shell itself.
   if (settingsLoading) {
     return (
       <div className="min-h-screen femora-ambient flex items-center justify-center">
@@ -74,14 +76,6 @@ export function AppShell({ user }: AppShellProps) {
 
   if (showLockScreen) {
     return <LockScreen />;
-  }
-
-  if (bootstrapLoading) {
-    return (
-      <div className="min-h-screen femora-ambient flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
-    );
   }
 
   if (showOnboarding) {

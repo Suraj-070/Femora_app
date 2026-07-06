@@ -21,7 +21,11 @@ export async function GET(req: Request) {
     if (from) where.date.gte = new Date(from);
     if (to) where.date.lte = new Date(to);
   }
-  const moods = await db.mood.findMany({ where, orderBy: { date: "desc" } });
+  const moods = await db.mood.findMany({
+    where,
+    orderBy: { date: "desc" },
+    select: { id: true, date: true, mood: true, note: true },
+  });
   return NextResponse.json(moods);
 }
 
@@ -30,7 +34,7 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
   const items = Array.isArray(body) ? body : [body];
-  const created = [];
+  const created: Awaited<ReturnType<typeof db.mood.create>>[] = [];
   for (const item of items) {
     const parsed = createSchema.safeParse(item);
     if (!parsed.success) {

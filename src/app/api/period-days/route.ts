@@ -33,7 +33,11 @@ export async function GET(req: Request) {
     if (from) where.date.gte = startOfDay(new Date(from));
     if (to) where.date.lte = startOfDay(new Date(to));
   }
-  const days = await db.periodDay.findMany({ where, orderBy: { date: "asc" } });
+  const days = await db.periodDay.findMany({
+    where,
+    orderBy: { date: "asc" },
+    select: { id: true, periodId: true, date: true, flow: true, notes: true },
+  });
   return NextResponse.json(days);
 }
 

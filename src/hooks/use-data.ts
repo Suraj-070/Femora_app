@@ -178,6 +178,28 @@ export function useLogPeriodDay() {
   return useMutation({
     mutationFn: (data: { date: string; flow: Flow; notes?: string | null }) =>
       fetchJson("/api/period-days", { method: "POST", body: JSON.stringify(data) }),
+    onMutate: async (data) => {
+      await qc.cancelQueries({ queryKey: ["periodDays"] });
+      const snapshots = qc.getQueriesData<PeriodDay[]>({ queryKey: ["periodDays"] });
+      const optimistic: PeriodDay = {
+        id: `temp-${Date.now()}`,
+        periodId: "temp",
+        userId: "temp",
+        date: data.date,
+        flow: data.flow,
+        notes: data.notes ?? null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      qc.setQueriesData<PeriodDay[]>({ queryKey: ["periodDays"] }, (old) => {
+        const withoutSameDay = (old ?? []).filter((d) => d.date !== data.date);
+        return [...withoutSameDay, optimistic];
+      });
+      return { snapshots };
+    },
+    onError: (_err, _data, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["periodDays"] });
@@ -250,6 +272,24 @@ export function useCreateSymptom() {
   return useMutation({
     mutationFn: (data: { date: string; symptomName: string; severity: number; note?: string | null }) =>
       fetchJson("/api/symptoms", { method: "POST", body: JSON.stringify(data) }),
+    onMutate: async (data) => {
+      await qc.cancelQueries({ queryKey: ["symptoms"] });
+      const snapshots = qc.getQueriesData<Symptom[]>({ queryKey: ["symptoms"] });
+      const optimistic: Symptom = {
+        id: `temp-${Date.now()}`,
+        userId: "temp",
+        date: data.date,
+        symptomName: data.symptomName,
+        severity: data.severity,
+        note: data.note ?? null,
+        createdAt: new Date().toISOString(),
+      };
+      qc.setQueriesData<Symptom[]>({ queryKey: ["symptoms"] }, (old) => [...(old ?? []), optimistic]);
+      return { snapshots };
+    },
+    onError: (_err, _data, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["symptoms"] });
@@ -316,6 +356,23 @@ export function useCreateMood() {
   return useMutation({
     mutationFn: (data: { date: string; mood: string; note?: string | null }) =>
       fetchJson("/api/moods", { method: "POST", body: JSON.stringify(data) }),
+    onMutate: async (data) => {
+      await qc.cancelQueries({ queryKey: ["moods"] });
+      const snapshots = qc.getQueriesData<MoodEntry[]>({ queryKey: ["moods"] });
+      const optimistic: MoodEntry = {
+        id: `temp-${Date.now()}`,
+        userId: "temp",
+        date: data.date,
+        mood: data.mood as MoodEntry["mood"],
+        note: data.note ?? null,
+        createdAt: new Date().toISOString(),
+      };
+      qc.setQueriesData<MoodEntry[]>({ queryKey: ["moods"] }, (old) => [...(old ?? []), optimistic]);
+      return { snapshots };
+    },
+    onError: (_err, _data, ctx) => {
+      ctx?.snapshots.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["bootstrap"] });
       qc.invalidateQueries({ queryKey: ["moods"] });

@@ -82,6 +82,7 @@ import {
   differenceInCalendarDays,
 } from "@/lib/date-utils";
 import { useAppStore } from "@/store/app-store";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const listMotion = {
   layout: true,
@@ -452,6 +453,23 @@ export function LogView() {
   }
 
   const isToday = date === todayISO();
+
+  const initialLoad =
+    activePeriodQuery.isLoading &&
+    periodDayQuery.isLoading &&
+    symptomsQuery.isLoading &&
+    moodsQuery.isLoading;
+
+  if (initialLoad) {
+    return (
+      <div className="view-enter px-4 sm:px-6 pb-24 space-y-4">
+        <Skeleton className="h-20 w-full rounded-2xl" />
+        <Skeleton className="h-48 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
+        <Skeleton className="h-40 w-full rounded-2xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="view-enter px-4 sm:px-6 pb-24 space-y-4">
