@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 
 import { GlassCard } from "@/components/femora/shared/glass-card";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -249,8 +250,13 @@ export function SettingsView() {
       </header>
 
       {/* Appearance */}
-      <GlassCard className="p-5">
-        <SectionTitle icon={Palette} title="Appearance" />
+      <Accordion type="multiple" defaultValue={["appearance"]} className="space-y-3">
+        <AccordionItem value="appearance" className="border-none">
+      <GlassCard className="p-0 overflow-hidden">
+        <AccordionTrigger className="px-5 py-4 hover:no-underline [&>svg]:text-muted-foreground">
+          <SectionTitle icon={Palette} title="Appearance" />
+        </AccordionTrigger>
+        <AccordionContent className="px-5 pb-5">
         <p className="text-sm text-muted-foreground mt-1 mb-4">
           Choose how Femora looks on your device.
         </p>
@@ -302,11 +308,16 @@ export function SettingsView() {
             })}
           </div>
         )}
+        </AccordionContent>
       </GlassCard>
+        </AccordionItem>
 
-      {/* Notifications */}
-      <GlassCard className="p-5">
-        <SectionTitle icon={Bell} title="Notifications" />
+        <AccordionItem value="notifications" className="border-none">
+      <GlassCard className="p-0 overflow-hidden">
+        <AccordionTrigger className="px-5 py-4 hover:no-underline [&>svg]:text-muted-foreground">
+          <SectionTitle icon={Bell} title="Notifications" />
+        </AccordionTrigger>
+        <AccordionContent className="px-5 pb-5">
         <p className="text-sm text-muted-foreground mt-1 mb-4">
           Get reminded before your period arrives — even when the app is closed.
         </p>
@@ -337,7 +348,10 @@ export function SettingsView() {
             />
           )}
         </div>
+        </AccordionContent>
       </GlassCard>
+        </AccordionItem>
+      </Accordion>
 
       {/* Health Profile */}
       <GlassCard className="p-5">
@@ -623,8 +637,13 @@ export function SettingsView() {
       </GlassCard>
 
       {/* Privacy & Security */}
-      <GlassCard className="p-5">
-        <SectionTitle icon={Shield} title="Privacy & Security" />
+      <Accordion type="multiple" defaultValue={[]} className="space-y-3">
+        <AccordionItem value="privacy" className="border-none">
+      <GlassCard className="p-0 overflow-hidden">
+        <AccordionTrigger className="px-5 py-4 hover:no-underline [&>svg]:text-muted-foreground">
+          <SectionTitle icon={Shield} title="Privacy & Security" />
+        </AccordionTrigger>
+        <AccordionContent className="px-5 pb-5">
         <p className="text-sm text-muted-foreground mt-1 mb-4">
           Protect your most personal data.
         </p>
@@ -634,7 +653,7 @@ export function SettingsView() {
           <SettingsRow
             icon={Lock}
             label="PIN Lock"
-            description="Require a 4-digit PIN to open Femora."
+            description="Require a 4-digit PIN on mobile when opening Femora fresh."
             control={
               isLoading ? (
                 <Skeleton className="h-6 w-11 rounded-full" />
@@ -678,11 +697,16 @@ export function SettingsView() {
             tied to your account.
           </p>
         </div>
+        </AccordionContent>
       </GlassCard>
+        </AccordionItem>
 
-      {/* Data & Export */}
-      <GlassCard className="p-5">
-        <SectionTitle icon={Database} title="Your Data" />
+        <AccordionItem value="data" className="border-none">
+      <GlassCard className="p-0 overflow-hidden">
+        <AccordionTrigger className="px-5 py-4 hover:no-underline [&>svg]:text-muted-foreground">
+          <SectionTitle icon={Database} title="Your Data" />
+        </AccordionTrigger>
+        <AccordionContent className="px-5 pb-5">
         <p className="text-sm text-muted-foreground mt-1 mb-4">
           Export, sample, or sign out — your data, your control.
         </p>
@@ -811,7 +835,10 @@ export function SettingsView() {
             </AlertDialogContent>
           </AlertDialog>
         </div>
+        </AccordionContent>
       </GlassCard>
+        </AccordionItem>
+      </Accordion>
 
       {/* About */}
       <GlassCard className="p-5">

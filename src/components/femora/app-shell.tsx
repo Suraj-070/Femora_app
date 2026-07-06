@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useAppStore } from "@/store/app-store";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { AppHeader } from "@/components/femora/app-header";
 import { BottomNav } from "@/components/femora/bottom-nav";
 import { DashboardView } from "@/components/femora/views/dashboard-view";
@@ -24,27 +25,17 @@ export function AppShell({ user }: AppShellProps) {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
   const unlocked = useAppStore((s) => s.unlocked);
-  const setUnlocked = useAppStore((s) => s.setUnlocked);
+  const isMobile = useIsMobile();
 
   // Single bootstrap call — loads all data at once
   const { data: bootstrap, isLoading } = useBootstrap();
 
   const showOnboarding = !isLoading && bootstrap && !bootstrap.settings.onboardingDone;
-  const pinRequired = !!bootstrap?.settings.pinEnabled && !!bootstrap?.settings.pinSet;
+  // Mobile-only: a PIN lock makes sense on a phone that can be picked up by
+  // someone else. On desktop it's just friction for no real benefit, so the
+  // lock screen never shows there even if PIN lock is toggled on.
+  const pinRequired = isMobile && !!bootstrap?.settings.pinEnabled && !!bootstrap?.settings.pinSet;
   const showLockScreen = !isLoading && pinRequired && !unlocked;
-
-  // Re-lock the moment the app is backgrounded — this is the part that
-  // actually matters on mobile: switching apps, locking the phone, or
-  // swiping to the home screen should require the PIN again on return,
-  // not just on a fresh cold start.
-  useEffect(() => {
-    if (!pinRequired) return;
-    const handleVisibility = () => {
-      if (document.hidden) setUnlocked(false);
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [pinRequired, setUnlocked]);
 
   // Android back button handling
   useEffect(() => {

@@ -19,6 +19,27 @@ interface AppState {
   setSelectedDate: (d: string | null) => void;
 }
 
+const PIN_SESSION_KEY = "femora-pin-unlocked";
+
+function readSessionUnlocked(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(PIN_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeSessionUnlocked(unlocked: boolean) {
+  if (typeof window === "undefined") return;
+  try {
+    if (unlocked) sessionStorage.setItem(PIN_SESSION_KEY, "1");
+    else sessionStorage.removeItem(PIN_SESSION_KEY);
+  } catch {
+    /* ignore (private browsing storage restrictions, etc.) */
+  }
+}
+
 export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
@@ -26,8 +47,14 @@ export const useAppStore = create<AppState>()(
       setView: (view) => set({ view }),
       logDate: null,
       setLogDate: (logDate) => set({ logDate }),
-      unlocked: false,
-      setUnlocked: (unlocked) => set({ unlocked }),
+      // Seeded from sessionStorage: stays unlocked across refreshes within
+      // the same tab/app session, only resets once that session actually
+      // ends (tab closed, PWA fully quit) — not on every reload.
+      unlocked: readSessionUnlocked(),
+      setUnlocked: (unlocked) => {
+        writeSessionUnlocked(unlocked);
+        set({ unlocked });
+      },
       selectedDate: null,
       setSelectedDate: (selectedDate) => set({ selectedDate }),
     }),
