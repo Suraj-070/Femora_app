@@ -58,6 +58,8 @@ export async function GET() {
     userId,
     theme: "system",
     pinEnabled: false,
+    pinFailedAttempts: 0,
+    pinLockedUntil: null,
     notifyPeriodReminder: true,
     notifySuggestEnd: true,
     notifyDailyCheckIn: true,
@@ -74,7 +76,7 @@ export async function GET() {
     createdAt: new Date(),
     updatedAt: new Date(),
   };
-  const { pin: _pin, ...settingsForClient } = settingsData;
+  const { pin: _pin, pinFailedAttempts: _pfa, pinLockedUntil: _plu, ...settingsForClient } = settingsData;
 
   return NextResponse.json({
     periods,

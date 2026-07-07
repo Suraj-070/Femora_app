@@ -51,6 +51,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { useSettings, useUpdateSettings } from "@/hooks/use-data";
+import { parseConditions } from "@/lib/constants";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 import { cn } from "@/lib/utils";
 
@@ -97,7 +98,7 @@ export function SettingsView() {
     setExerciseFrequency(settings.exerciseFrequency ?? "");
     setDietType(settings.dietType ?? "");
     try {
-      setConditions(settings.conditions ? JSON.parse(settings.conditions) : []);
+      setConditions(parseConditions(settings.conditions));
     } catch {
       setConditions([]);
     }
@@ -460,7 +461,7 @@ export function SettingsView() {
               {
                 label: "Conditions",
                 value: settings?.conditions
-                  ? (() => { try { return (JSON.parse(settings.conditions) as string[]).join(", "); } catch { return null; } })()
+                  ? parseConditions(settings.conditions).join(", ") || null
                   : null,
               },
             ]

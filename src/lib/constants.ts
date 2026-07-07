@@ -95,3 +95,18 @@ export const DEFAULT_SYMPTOMS = [
 export const SEVERITY_LABELS = ["", "Mild", "Mild", "Moderate", "Strong", "Severe"];
 
 export const FERTILE_WINDOW_DAYS = 5; // days before ovulation considered fertile
+
+// Health Profile "conditions" is stored as a JSON-stringified string[] in a
+// plain text column. Centralized here so every reader handles malformed/old
+// data the same safe way instead of scattering ad-hoc try/catch JSON.parse
+// calls (one call site had none at all and could throw on bad data).
+export function parseConditions(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((c): c is string => typeof c === "string");
+  } catch {
+    return [];
+  }
+}

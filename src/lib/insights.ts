@@ -4,6 +4,7 @@ import Groq from "groq-sdk";
 import { db } from "@/lib/db";
 import { getPredictionForUser } from "@/lib/prediction";
 import { getStatsForUser } from "@/lib/stats";
+import { parseConditions } from "@/lib/constants";
 
 export interface Insight {
   id: string;
@@ -107,8 +108,8 @@ function buildHealthProfileContext(settings: Record<string, unknown> | null): st
   }
 
   if (conditions) {
-    try {
-      const conds: string[] = JSON.parse(conditions);
+    const conds = parseConditions(conditions);
+    if (conds.length > 0) {
       const map: Record<string, string> = {
         none: "no known conditions",
         pcos: "PCOS",
@@ -118,8 +119,6 @@ function buildHealthProfileContext(settings: Record<string, unknown> | null): st
         "prefer-not-to-say": "conditions not disclosed",
       };
       parts.push(`Known conditions: ${conds.map((c) => map[c] ?? c).join(", ")}`);
-    } catch {
-      // ignore
     }
   }
 

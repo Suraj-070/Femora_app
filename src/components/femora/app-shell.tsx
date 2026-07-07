@@ -13,6 +13,7 @@ import { InsightsView } from "@/components/femora/views/insights-view";
 import { SettingsView } from "@/components/femora/views/settings-view";
 import { OnboardingView } from "@/components/femora/onboarding-view";
 import { LockScreen } from "@/components/femora/lock-screen";
+import { ViewErrorBoundary } from "@/components/femora/shared/view-error-boundary";
 import { AnimatePresence, motion } from "framer-motion";
 import { useBootstrap, useSettings } from "@/hooks/use-data";
 import type { ViewKey } from "@/store/app-store";
@@ -94,12 +95,14 @@ export function AppShell({ user }: AppShellProps) {
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           >
-            {view === "dashboard" && <DashboardView />}
-            {view === "calendar" && <CalendarView />}
-            {view === "log" && <LogView />}
-            {view === "stats" && <StatsView />}
-            {view === "insights" && <InsightsView />}
-            {view === "settings" && <SettingsView />}
+            <ViewErrorBoundary>
+              {view === "dashboard" && <DashboardView />}
+              {view === "calendar" && <CalendarView />}
+              {view === "log" && <LogView />}
+              {view === "stats" && <StatsView />}
+              {view === "insights" && <InsightsView />}
+              {view === "settings" && <SettingsView />}
+            </ViewErrorBoundary>
           </motion.div>
         </AnimatePresence>
       </main>

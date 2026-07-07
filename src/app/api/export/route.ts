@@ -15,8 +15,9 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type") ?? "all";
 
-  const [periods, symptoms, moods] = await Promise.all([
+  const [periods, periodDays, symptoms, moods] = await Promise.all([
     db.period.findMany({ where: { userId }, orderBy: { startDate: "asc" } }),
+    db.periodDay.findMany({ where: { userId }, orderBy: { date: "asc" } }),
     db.symptom.findMany({ where: { userId }, orderBy: { date: "asc" } }),
     db.mood.findMany({ where: { userId }, orderBy: { date: "asc" } }),
   ]);
@@ -24,14 +25,35 @@ export async function GET(req: Request) {
   const sections: string[] = [];
 
   if (type === "all" || type === "periods") {
-    sections.push("PERIODS\nStart Date,End Date,Flow,Notes");
+    // One row per actually-logged day (real data), not one row per period
+    // with a single flow value — flow is tracked per-day now, and a period
+    // can span several days with different flow levels.
+    sections.push("PERIODS\nDate,Flow,Notes,Period Started,Period Ended");
+    const periodById = new Map(periods.map((p) => [p.id, p]));
+    const migratedPeriodIds = new Set(periodDays.map((pd) => pd.periodId));
+    for (const pd of periodDays) {
+      const parent = periodById.get(pd.periodId);
+      sections.push(
+        [
+          csvCell(new Date(pd.date).toISOString().slice(0, 10)),
+          csvCell(flowLabel(pd.flow as "spotting" | "light" | "medium" | "heavy")),
+          csvCell(pd.notes),
+          csvCell(parent ? new Date(parent.startDate).toISOString().slice(0, 10) : ""),
+          csvCell(parent?.endDate ? new Date(parent.endDate).toISOString().slice(0, 10) : ""),
+        ].join(",")
+      );
+    }
+    // Legacy periods from before per-day tracking — no PeriodDay rows at
+    // all, so fall back to the single value they were created with.
     for (const p of periods) {
+      if (migratedPeriodIds.has(p.id)) continue;
       sections.push(
         [
           csvCell(new Date(p.startDate).toISOString().slice(0, 10)),
-          csvCell(p.endDate ? new Date(p.endDate).toISOString().slice(0, 10) : ""),
           csvCell(flowLabel(p.flow as "spotting" | "light" | "medium" | "heavy")),
           csvCell(p.notes),
+          csvCell(new Date(p.startDate).toISOString().slice(0, 10)),
+          csvCell(p.endDate ? new Date(p.endDate).toISOString().slice(0, 10) : ""),
         ].join(",")
       );
     }

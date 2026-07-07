@@ -97,6 +97,8 @@ model Settings {
   userId     String   @unique
   theme      String   @default("system")
   pinEnabled Boolean  @default(false)
+  pinFailedAttempts Int @default(0)
+  pinLockedUntil    DateTime?
   notifyPeriodReminder Boolean @default(true)
   notifySuggestEnd      Boolean @default(true)
   notifyDailyCheckIn    Boolean @default(true)

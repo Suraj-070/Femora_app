@@ -477,32 +477,30 @@ export function DashboardView() {
 
           <div className="relative">
             {/* greeting + confidence */}
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <FemoraMascot className="w-11 h-11 shrink-0" />
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <GreetingIcon className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-sm text-muted-foreground">
-                      {greeting}{firstName ? `, ${firstName}` : ""}
-                    </span>
-                  </div>
+            <div className="flex items-start justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <FemoraMascot className="w-9 h-9 sm:w-11 sm:h-11 shrink-0" />
+                <div className="flex items-center gap-1.5">
+                  <GreetingIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <span className="text-sm text-muted-foreground">
+                    {greeting}{firstName ? `, ${firstName}` : ""}
+                  </span>
                 </div>
               </div>
               {confidence > 0 && (
                 <Badge
                   variant="secondary"
-                  className="gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/10"
+                  className="gap-1 bg-primary/10 text-primary border-primary/20 hover:bg-primary/10 shrink-0 text-xs"
                 >
                   <Sparkles className="w-3 h-3" />
-                  {Math.round(confidence)}% confidence
+                  {Math.round(confidence)}%
                 </Badge>
               )}
             </div>
 
             {activePeriod ? (
               /* actively tracking a period right now */
-              <div className="mt-5 text-center sm:text-left">
+              <div className="mt-4 text-center sm:text-left">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium mb-3">
                   <Droplets className="w-4 h-4" />
                   Currently on your period
@@ -532,7 +530,7 @@ export function DashboardView() {
               </div>
             ) : periodMayBeHere ? (
               /* period expected now / overdue */
-              <div className="mt-5 text-center sm:text-left">
+              <div className="mt-4 text-center sm:text-left">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-300 text-sm font-medium mb-3">
                   <Heart className="w-4 h-4" fill="currentColor" />
                   Your period may be here
@@ -605,7 +603,7 @@ export function DashboardView() {
               </div>
             ) : (
               /* has periods but no prediction yet */
-              <div className="mt-5 text-center sm:text-left">
+              <div className="mt-4 text-center sm:text-left">
                 <h2 className="text-2xl font-bold tracking-tight">
                   Building your predictions
                 </h2>

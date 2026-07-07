@@ -26,8 +26,10 @@ const updateSchema = z.object({
 });
 
 // Never send the pin (hashed or not) to the client — only whether one is set.
-function toClientSettings<T extends { pin: string | null }>(settings: T) {
-  const { pin, ...rest } = settings;
+function toClientSettings<T extends { pin: string | null; pinFailedAttempts?: number; pinLockedUntil?: Date | null }>(
+  settings: T
+) {
+  const { pin, pinFailedAttempts, pinLockedUntil, ...rest } = settings;
   return { ...rest, pinSet: !!pin };
 }
 
@@ -70,6 +72,9 @@ export async function PATCH(req: Request) {
       }
       data.pin = await bcrypt.hash(d.pin, 10);
     }
+    // A new/removed PIN invalidates any stale lockout from the old one.
+    data.pinFailedAttempts = 0;
+    data.pinLockedUntil = null;
   }
   if (d.onboardingDone !== undefined) data.onboardingDone = d.onboardingDone;
   if (d.ageRange !== undefined) data.ageRange = d.ageRange ?? null;
