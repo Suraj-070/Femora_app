@@ -164,33 +164,39 @@ export function CalendarView() {
     return m;
   }, [moods]);
 
+  const hasHistory = (periods?.length ?? 0) > 0;
+
   const predictedDays = useMemo(() => {
     const set = new Set<string>();
     // Once you're actively tracking a period for real, the forecast guess
     // is stale noise — showing it in gaps you deliberately cleared just
     // fights your own data. Only show it when nothing is being tracked yet.
-    if (activePeriod) return set;
+    if (activePeriod || !hasHistory) return set;
     if (prediction?.earliestDate && prediction?.latestDate) {
       for (const d of rangeDays(prediction.earliestDate, prediction.latestDate)) {
         set.add(d);
       }
     }
     return set;
-  }, [prediction, activePeriod]);
+  }, [prediction, activePeriod, hasHistory]);
 
   const fertileDays = useMemo(() => {
     const set = new Set<string>();
+    // Same reasoning as predictedDays: no point guessing a fertile window
+    // while actively tracking a real period, or with zero cycle history.
+    if (activePeriod || !hasHistory) return set;
     if (prediction?.fertileStart && prediction?.fertileEnd) {
       for (const d of rangeDays(prediction.fertileStart, prediction.fertileEnd)) {
         set.add(d);
       }
     }
     return set;
-  }, [prediction]);
+  }, [prediction, activePeriod, hasHistory]);
 
-  const ovulationDay = prediction?.ovulationDate
-    ? toISODate(fromISO(prediction.ovulationDate))
-    : null;
+  const ovulationDay =
+    !activePeriod && hasHistory && prediction?.ovulationDate
+      ? toISODate(fromISO(prediction.ovulationDate))
+      : null;
 
   const today = todayISO();
   const monthKey = toISODate(startOfMonth(month));

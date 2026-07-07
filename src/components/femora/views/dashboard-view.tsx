@@ -279,7 +279,11 @@ export function DashboardView() {
   const fertileEnd = prediction?.fertileEnd ?? null;
 
   const hasFertility =
-    !activePeriod && !!fertileStart && !!fertileEnd && !!ovulationDate;
+    !activePeriod &&
+    (periods?.length ?? 0) > 0 &&
+    !!fertileStart &&
+    !!fertileEnd &&
+    !!ovulationDate;
 
   const inFertileWindow = useMemo(() => {
     if (!fertileStart || !fertileEnd) return false;

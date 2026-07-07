@@ -51,6 +51,18 @@ export function Providers({ children }: { children: ReactNode }) {
           persistOptions={{
             persister,
             maxAge: 10 * 60 * 1000, // matches gcTime
+            dehydrateOptions: {
+              shouldDehydrateQuery: (query) => {
+                // These change the instant you tap a button (end/start/reopen
+                // a period, log a day) — persisting them risks a page reload
+                // rehydrating stale state before it's had a chance to
+                // revalidate, which showed up as "ended period still looks
+                // active" and "stale fertile window after deleting periods".
+                const volatileKeys = ["activePeriod", "prediction", "periodDays"];
+                const key = query.queryKey[0];
+                return typeof key === "string" ? !volatileKeys.includes(key) : true;
+              },
+            },
           }}
         >
           {children}
