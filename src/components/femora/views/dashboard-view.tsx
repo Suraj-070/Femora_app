@@ -327,7 +327,6 @@ export function DashboardView() {
   const greeting = getGreeting();
   const { data: session } = useSession();
   const firstName = session?.user?.name?.trim().split(" ")[0] || null;
-  const todaysTip = getTodaysFact();
 
   const goLog = () => {
     setLogDate(todayISO());
@@ -381,7 +380,7 @@ export function DashboardView() {
                 <GreetingIcon className="w-4 h-4 text-primary" />
                 <span className="text-sm">{greeting}</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
                 Welcome to <span className="text-gradient">Femora</span>
               </h1>
               <p className="text-muted-foreground mt-2.5 max-w-md leading-relaxed">
@@ -508,14 +507,11 @@ export function DashboardView() {
                   <Droplets className="w-4 h-4" />
                   Currently on your period
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
                   Day {differenceInCalendarDays(fromISO(today), fromISO(activePeriod.startDate)) + 1}
                 </h2>
-                <p className="text-muted-foreground mt-1.5 max-w-md leading-relaxed">
+                <p className="text-sm text-muted-foreground mt-1.5 max-w-md leading-relaxed">
                   Started {formatNice(activePeriod.startDate)}. How are you feeling today?
-                </p>
-                <p className="text-xs text-muted-foreground/80 mt-2 max-w-md leading-relaxed italic">
-                  💡 {todaysTip}
                 </p>
                 <div className="flex flex-wrap gap-2 mt-5 justify-center sm:justify-start">
                   <Button
@@ -541,10 +537,10 @@ export function DashboardView() {
                   <Heart className="w-4 h-4" fill="currentColor" />
                   Your period may be here
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
                   Time to check in
                 </h2>
-                <p className="text-muted-foreground mt-1.5 max-w-md leading-relaxed">
+                <p className="text-sm text-muted-foreground mt-1.5 max-w-md leading-relaxed">
                   Based on your cycle, your period was expected around{" "}
                   {expectedDate ? formatNice(expectedDate) : "now"}. Log it to
                   keep your predictions accurate.
@@ -613,7 +609,7 @@ export function DashboardView() {
                 <h2 className="text-2xl font-bold tracking-tight">
                   Building your predictions
                 </h2>
-                <p className="text-muted-foreground mt-1.5 max-w-md leading-relaxed">
+                <p className="text-sm text-muted-foreground mt-1.5 max-w-md leading-relaxed">
                   Keep logging your periods to unlock personalized cycle
                   predictions and fertility insights.
                 </p>
