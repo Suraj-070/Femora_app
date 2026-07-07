@@ -80,6 +80,10 @@ export interface Settings {
   theme: "light" | "dark" | "system";
   pinEnabled: boolean;
   pinSet: boolean;
+  notifyPeriodReminder: boolean;
+  notifySuggestEnd: boolean;
+  notifyDailyCheckIn: boolean;
+  notifyDailyFact: boolean;
   // Health profile
   onboardingDone: boolean;
   ageRange: string | null;

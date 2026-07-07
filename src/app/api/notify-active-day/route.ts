@@ -34,6 +34,9 @@ export async function GET(req: Request) {
 
   for (const userId of subsByUser.keys()) {
     try {
+      const settings = await db.settings.findUnique({ where: { userId } });
+      if (!(settings?.notifyDailyCheckIn ?? true)) continue;
+
       const active = await db.period.findFirst({
         where: { userId, endDate: null },
         include: { days: { orderBy: { date: "desc" }, take: 1 } },

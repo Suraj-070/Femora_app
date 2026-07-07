@@ -26,6 +26,9 @@ export async function GET(req: Request) {
   let failed = 0;
 
   for (const userId of subsByUser.keys()) {
+    const settings = await db.settings.findUnique({ where: { userId } });
+    if (!(settings?.notifyDailyFact ?? true)) continue;
+
     const result = await sendPushToUser(
       userId,
       { title: "Femora — Today's Fact 🌸", body, tag: "daily-fact", url: "/" },

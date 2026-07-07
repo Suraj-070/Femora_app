@@ -519,6 +519,10 @@ export type UpdateSettingsData = {
   theme?: "light" | "dark" | "system";
   pinEnabled?: boolean;
   pin?: string | null;
+  notifyPeriodReminder?: boolean;
+  notifySuggestEnd?: boolean;
+  notifyDailyCheckIn?: boolean;
+  notifyDailyFact?: boolean;
   onboardingDone?: boolean;
   ageRange?: string | null;
   bodyType?: string | null;

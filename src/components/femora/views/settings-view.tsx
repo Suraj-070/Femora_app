@@ -24,6 +24,9 @@ import {
   ChevronRight,
   User,
   Check,
+  Clock,
+  AlertCircle,
+  Lightbulb,
 } from "lucide-react";
 
 import { GlassCard } from "@/components/femora/shared/glass-card";
@@ -332,20 +335,92 @@ export function SettingsView() {
               the lock icon in your address bar and allow notifications for this
               site.
             </p>
-          ) : (
+          ) : !isSubscribed ? (
             <SettingsRow
               icon={Bell}
-              label="Period reminders"
-              description="Notify me 5 days before my next period"
+              label="Enable notifications"
+              description="Turn on push notifications for this device"
               control={
                 <Switch
                   checked={isSubscribed}
                   onCheckedChange={handleNotificationToggle}
                   disabled={pushLoading}
-                  aria-label="Toggle period reminders"
+                  aria-label="Enable push notifications"
                 />
               }
             />
+          ) : (
+            <>
+              <SettingsRow
+                icon={Bell}
+                label="Period reminders"
+                description="5 days before your period is expected"
+                control={
+                  <Switch
+                    checked={settings?.notifyPeriodReminder ?? true}
+                    onCheckedChange={(checked) =>
+                      updateSettings.mutateAsync({ notifyPeriodReminder: checked })
+                    }
+                    disabled={updateSettings.isPending}
+                    aria-label="Toggle period reminders"
+                  />
+                }
+              />
+              <SettingsRow
+                icon={Clock}
+                label="Daily check-in"
+                description="Evening nudge to log today, only while a period is active"
+                control={
+                  <Switch
+                    checked={settings?.notifyDailyCheckIn ?? true}
+                    onCheckedChange={(checked) =>
+                      updateSettings.mutateAsync({ notifyDailyCheckIn: checked })
+                    }
+                    disabled={updateSettings.isPending}
+                    aria-label="Toggle daily check-in"
+                  />
+                }
+              />
+              <SettingsRow
+                icon={AlertCircle}
+                label="Suggest-end nudge"
+                description="Asks if your period ended when logging goes quiet"
+                control={
+                  <Switch
+                    checked={settings?.notifySuggestEnd ?? true}
+                    onCheckedChange={(checked) =>
+                      updateSettings.mutateAsync({ notifySuggestEnd: checked })
+                    }
+                    disabled={updateSettings.isPending}
+                    aria-label="Toggle suggest-end nudge"
+                  />
+                }
+              />
+              <SettingsRow
+                icon={Lightbulb}
+                label="Daily fact"
+                description="One cycle-health fact each morning"
+                control={
+                  <Switch
+                    checked={settings?.notifyDailyFact ?? true}
+                    onCheckedChange={(checked) =>
+                      updateSettings.mutateAsync({ notifyDailyFact: checked })
+                    }
+                    disabled={updateSettings.isPending}
+                    aria-label="Toggle daily fact"
+                  />
+                }
+              />
+              <div className="pt-3">
+                <button
+                  type="button"
+                  onClick={() => handleNotificationToggle(false)}
+                  className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  Turn off all notifications for this device
+                </button>
+              </div>
+            </>
           )}
         </div>
         </AccordionContent>

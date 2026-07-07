@@ -10,6 +10,10 @@ const updateSchema = z.object({
   theme: z.enum(["light", "dark", "system"]).optional(),
   pinEnabled: z.boolean().optional(),
   pin: z.string().nullable().optional(),
+  notifyPeriodReminder: z.boolean().optional(),
+  notifySuggestEnd: z.boolean().optional(),
+  notifyDailyCheckIn: z.boolean().optional(),
+  notifyDailyFact: z.boolean().optional(),
   // Health profile
   onboardingDone: z.boolean().optional(),
   ageRange: z.enum(["under-20", "20s", "30s", "40s-plus"]).nullable().optional(),
@@ -53,6 +57,10 @@ export async function PATCH(req: Request) {
   const d = parsed.data;
   if (d.theme !== undefined) data.theme = d.theme;
   if (d.pinEnabled !== undefined) data.pinEnabled = d.pinEnabled;
+  if (d.notifyPeriodReminder !== undefined) data.notifyPeriodReminder = d.notifyPeriodReminder;
+  if (d.notifySuggestEnd !== undefined) data.notifySuggestEnd = d.notifySuggestEnd;
+  if (d.notifyDailyCheckIn !== undefined) data.notifyDailyCheckIn = d.notifyDailyCheckIn;
+  if (d.notifyDailyFact !== undefined) data.notifyDailyFact = d.notifyDailyFact;
   if (d.pin !== undefined) {
     if (d.pin === null) {
       data.pin = null;
