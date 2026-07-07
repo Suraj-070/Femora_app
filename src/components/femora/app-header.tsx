@@ -20,6 +20,17 @@ import {
 } from "@/components/ui/drawer";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 const items: { key: ViewKey; label: string; icon: typeof LayoutDashboard }[] = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -104,17 +115,40 @@ function AccountMenuContent({
         <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
       </button>
 
-      <div className="h-px bg-border/60 mx-1 my-1" />
+      {/* extra breathing room before the destructive action, not just a hairline divider */}
+      <div className="h-3" />
+      <div className="h-px bg-border/60 mx-1 mb-2" />
 
-      {/* Sign out — full-width, distinct, not just another list row */}
-      <button
-        type="button"
-        onClick={() => signOut({ callbackUrl: "/" })}
-        className="w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-xl text-sm font-medium text-destructive bg-destructive/5 hover:bg-destructive/10 transition-colors"
-      >
-        <LogOut className="w-4 h-4" />
-        Sign out
-      </button>
+      {/* Sign out — requires explicit confirmation, a mis-tap here shouldn't
+          immediately end the session */}
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-xl text-sm font-medium text-destructive bg-destructive/5 hover:bg-destructive/10 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out
+          </button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sign out of Femora?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You&apos;ll need to sign back in to see your cycle data again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sign out
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
