@@ -1,21 +1,25 @@
 "use client";
 
-import { LayoutDashboard, CalendarDays, BarChart3, Sparkles, Settings as SettingsIcon, Heart, LogOut } from "lucide-react";
+import { useState } from "react";
+import { LayoutDashboard, CalendarDays, BarChart3, Sparkles, Settings as SettingsIcon, Heart, LogOut, Moon, Sun, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { signOut } from "next-auth/react";
+import { useTheme } from "next-themes";
 import { useAppStore, type ViewKey } from "@/store/app-store";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerTrigger,
+  DrawerContent,
+} from "@/components/ui/drawer";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { useTheme } from "next-themes";
-import { Moon, Sun } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 const items: { key: ViewKey; label: string; icon: typeof LayoutDashboard }[] = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -24,31 +28,105 @@ const items: { key: ViewKey; label: string; icon: typeof LayoutDashboard }[] = [
   { key: "insights", label: "AI Insights", icon: Sparkles },
 ];
 
-function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="rounded-full"
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      aria-label="Toggle theme"
-    >
-      <Sun className="h-[18px] w-[18px] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-      <Moon className="absolute h-[18px] w-[18px] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-    </Button>
-  );
-}
-
 function initials(name?: string | null, email?: string) {
   if (name) return name.slice(0, 2).toUpperCase();
   if (email) return email.slice(0, 2).toUpperCase();
   return "FE";
 }
 
+/* ------------------------------------------------------------------ */
+/* Shared account-menu content — same content, different shell         */
+/* ------------------------------------------------------------------ */
+
+function AccountMenuContent({
+  name,
+  email,
+  onNavigate,
+  onClose,
+}: {
+  name?: string | null;
+  email?: string;
+  onNavigate: (v: ViewKey) => void;
+  onClose: () => void;
+}) {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <div className="space-y-1">
+      {/* Profile header */}
+      <div className="flex items-center gap-3 px-1 pb-3">
+        <div className="relative shrink-0">
+          <div className="absolute -inset-0.5 rounded-full bg-femora-gradient opacity-70 blur-[2px]" />
+          <Avatar className="w-12 h-12 relative border-2 border-background">
+            <AvatarFallback className="bg-femora-gradient text-white text-sm font-semibold">
+              {initials(name, email)}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+        <div className="min-w-0">
+          <p className="font-semibold leading-tight truncate">{name ?? "User"}</p>
+          <p className="text-xs text-muted-foreground truncate">{email}</p>
+        </div>
+      </div>
+
+      <div className="h-px bg-border/60 mx-1" />
+
+      {/* Theme row — a switch, not a separate header icon */}
+      <div className="flex items-center justify-between px-2.5 py-2.5 rounded-xl">
+        <div className="flex items-center gap-2.5 text-sm font-medium">
+          {theme === "dark" ? (
+            <Moon className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <Sun className="w-4 h-4 text-muted-foreground" />
+          )}
+          Dark mode
+        </div>
+        <Switch
+          checked={theme === "dark"}
+          onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+          aria-label="Toggle dark mode"
+        />
+      </div>
+
+      {/* Settings */}
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate("settings");
+          onClose();
+        }}
+        className="w-full flex items-center justify-between gap-2.5 px-2.5 py-2.5 rounded-xl text-sm font-medium hover:bg-accent/60 transition-colors"
+      >
+        <span className="flex items-center gap-2.5">
+          <SettingsIcon className="w-4 h-4 text-muted-foreground" />
+          Settings
+        </span>
+        <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+      </button>
+
+      <div className="h-px bg-border/60 mx-1 my-1" />
+
+      {/* Sign out — full-width, distinct, not just another list row */}
+      <button
+        type="button"
+        onClick={() => signOut({ callbackUrl: "/" })}
+        className="w-full flex items-center justify-center gap-2 px-2.5 py-2.5 rounded-xl text-sm font-medium text-destructive bg-destructive/5 hover:bg-destructive/10 transition-colors"
+      >
+        <LogOut className="w-4 h-4" />
+        Sign out
+      </button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
 export function AppHeader({ name, email }: { name?: string | null; email?: string }) {
   const view = useAppStore((s) => s.view);
   const setView = useAppStore((s) => s.setView);
+  const isMobile = useIsMobile();
+  const [open, setOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-30 px-4 sm:px-6 pt-3 pb-2">
       <div className="glass rounded-2xl border border-border/40 shadow-sm px-3 sm:px-4 h-14 flex items-center justify-between">
@@ -89,9 +167,25 @@ export function AppHeader({ name, email }: { name?: string | null; email?: strin
           })}
         </nav>
 
-        <div className="flex items-center gap-1">
-          <ThemeToggle />
-          <DropdownMenu>
+        {/* Account trigger — single tap target, no separate theme icon crowding mobile header */}
+        {isMobile ? (
+          <Drawer open={open} onOpenChange={setOpen}>
+            <DrawerTrigger asChild>
+              <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Account menu">
+                <Avatar className="w-8 h-8 border border-border">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                    {initials(name, email)}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </DrawerTrigger>
+            <DrawerContent className="px-4 pb-6 pt-2">
+              <div className="mx-auto w-10 h-1.5 rounded-full bg-border mb-4" />
+              <AccountMenuContent name={name} email={email} onNavigate={setView} onClose={() => setOpen(false)} />
+            </DrawerContent>
+          </Drawer>
+        ) : (
+          <DropdownMenu open={open} onOpenChange={setOpen}>
             <DropdownMenuTrigger asChild>
               <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring" aria-label="Account menu">
                 <Avatar className="w-8 h-8 border border-border">
@@ -101,27 +195,11 @@ export function AppHeader({ name, email }: { name?: string | null; email?: strin
                 </Avatar>
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <div className="px-2 py-1.5">
-                <p className="text-sm font-medium truncate">{name ?? "User"}</p>
-                <p className="text-xs text-muted-foreground truncate">{email}</p>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setView("settings")}>
-                <SettingsIcon className="w-4 h-4 mr-2" />
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={() => signOut({ callbackUrl: "/" })}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign out
-              </DropdownMenuItem>
+            <DropdownMenuContent align="end" className="w-64 p-2">
+              <AccountMenuContent name={name} email={email} onNavigate={setView} onClose={() => setOpen(false)} />
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
+        )}
       </div>
     </header>
   );
