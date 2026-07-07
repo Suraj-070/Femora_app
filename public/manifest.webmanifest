@@ -4,7 +4,7 @@
   "description": "Premium, privacy-focused period and cycle tracking PWA with smart predictions and AI insights.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fff5f3",
+  "background_color": "#201620",
   "theme_color": "#e11d5c",
   "orientation": "portrait",
   "icons": [
