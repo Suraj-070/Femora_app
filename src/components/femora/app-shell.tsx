@@ -15,6 +15,7 @@ import { ProfileView } from "@/components/femora/views/profile-view";
 import { OnboardingView } from "@/components/femora/onboarding-view";
 import { LockScreen } from "@/components/femora/lock-screen";
 import { ViewErrorBoundary } from "@/components/femora/shared/view-error-boundary";
+import { SplashScreen } from "@/components/femora/shared/splash-screen";
 import { AnimatePresence, motion } from "framer-motion";
 import { useBootstrap, useSettings } from "@/hooks/use-data";
 import type { ViewKey } from "@/store/app-store";
@@ -69,11 +70,7 @@ export function AppShell({ user }: AppShellProps) {
   // make the person wait behind the full (heavy) data load just to see the
   // PIN screen or the app shell itself.
   if (settingsLoading) {
-    return (
-      <div className="min-h-screen femora-ambient flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   if (showLockScreen) {
@@ -88,13 +85,13 @@ export function AppShell({ user }: AppShellProps) {
     <div className="femora-ambient min-h-screen flex flex-col">
       <AppHeader name={user.name} email={user.email} />
       <main className="flex-1 pt-2">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={view}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
           >
             <ViewErrorBoundary>
               {view === "dashboard" && <DashboardView />}

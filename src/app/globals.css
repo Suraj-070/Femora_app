@@ -191,6 +191,22 @@
   scrollbar-width: none;
 }
 
+/* Hide the page's own scrollbar on mobile widths — scrolling still works
+   fine, this just removes the visible track/thumb so it feels like a
+   native app instead of a browser tab. Desktop keeps the normal scrollbar
+   since it's expected there (mouse wheel/drag feedback). */
+@media (max-width: 768px) {
+  html,
+  body {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* smooth tab transitions */
 .view-enter {
   animation: viewIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
