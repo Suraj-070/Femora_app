@@ -64,8 +64,15 @@ function AccountMenuContent({
 
   return (
     <div className="space-y-1">
-      {/* Profile header */}
-      <div className="flex items-center gap-3 px-1 pb-3">
+      {/* Profile header — tap to open the full Profile page */}
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate("profile");
+          onClose();
+        }}
+        className="w-full flex items-center gap-3 px-1 pb-3 pt-1 rounded-xl hover:bg-accent/40 transition-colors text-left"
+      >
         <div className="relative shrink-0">
           <div className="absolute -inset-0.5 rounded-full bg-femora-gradient opacity-70 blur-[2px]" />
           <Avatar className="w-12 h-12 relative border-2 border-background">
@@ -74,11 +81,11 @@ function AccountMenuContent({
             </AvatarFallback>
           </Avatar>
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="font-semibold leading-tight truncate">{name ?? "User"}</p>
           <p className="text-xs text-muted-foreground truncate">{email}</p>
         </div>
-      </div>
+      </button>
 
       <div className="h-px bg-border/60 mx-1" />
 

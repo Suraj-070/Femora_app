@@ -11,6 +11,7 @@ import { LogView } from "@/components/femora/views/log-view";
 import { StatsView } from "@/components/femora/views/stats-view";
 import { InsightsView } from "@/components/femora/views/insights-view";
 import { SettingsView } from "@/components/femora/views/settings-view";
+import { ProfileView } from "@/components/femora/views/profile-view";
 import { OnboardingView } from "@/components/femora/onboarding-view";
 import { LockScreen } from "@/components/femora/lock-screen";
 import { ViewErrorBoundary } from "@/components/femora/shared/view-error-boundary";
@@ -102,6 +103,7 @@ export function AppShell({ user }: AppShellProps) {
               {view === "stats" && <StatsView />}
               {view === "insights" && <InsightsView />}
               {view === "settings" && <SettingsView />}
+              {view === "profile" && <ProfileView />}
             </ViewErrorBoundary>
           </motion.div>
         </AnimatePresence>

@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-export type ViewKey = "dashboard" | "calendar" | "log" | "stats" | "insights" | "settings";
+export type ViewKey = "dashboard" | "calendar" | "log" | "stats" | "insights" | "settings" | "profile";
 
 interface AppState {
   view: ViewKey;
