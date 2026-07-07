@@ -34,6 +34,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { GlassCard } from "@/components/femora/shared/glass-card";
+import { InfoIcon } from "@/components/femora/shared/info-icon";
 import { cn } from "@/lib/utils";
 import {
   usePeriods,
@@ -511,6 +512,7 @@ export function CalendarView() {
                 <span className="size-2 rounded-full bg-gradient-to-br from-amber-400 to-rose-400" />
                 Mood
               </LegendItem>
+              <InfoIcon topic="calendarLegend" />
             </div>
 
             {/* Selected day detail panel */}

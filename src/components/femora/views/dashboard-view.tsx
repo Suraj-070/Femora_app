@@ -19,6 +19,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { GlassCard } from "@/components/femora/shared/glass-card";
+import { InfoIcon } from "@/components/femora/shared/info-icon";
+import type { InfoTopic } from "@/lib/info-content";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -135,11 +137,15 @@ function QuickFact({
   value,
   label,
   delay,
+  infoTopic,
+  infoContext,
 }: {
   icon: LucideIcon;
   value: string | number;
   label: string;
   delay: number;
+  infoTopic?: InfoTopic;
+  infoContext?: Record<string, unknown>;
 }) {
   return (
     <motion.div
@@ -154,7 +160,10 @@ function QuickFact({
         <div className="text-2xl font-bold tracking-tight leading-none mt-0.5">
           {value}
         </div>
-        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          {label}
+          {infoTopic && <InfoIcon topic={infoTopic} context={infoContext} />}
+        </div>
       </GlassCard>
     </motion.div>
   );
@@ -602,24 +611,32 @@ export function DashboardView() {
           value={cycleDay ?? "—"}
           label="Cycle Day"
           delay={0.05}
+          infoTopic="cycleDay"
+          infoContext={cycleDay != null ? { cycleDay } : undefined}
         />
         <QuickFact
           icon={TrendingUp}
           value={avgCycle != null ? `${avgCycle}d` : "—"}
           label="Avg Cycle"
           delay={0.1}
+          infoTopic="avgCycle"
+          infoContext={avgCycle != null ? { avgCycleLength: avgCycle } : undefined}
         />
         <QuickFact
           icon={Droplets}
           value={avgPeriod != null ? `${avgPeriod}d` : "—"}
           label="Period Length"
           delay={0.15}
+          infoTopic="periodLength"
+          infoContext={avgPeriod != null ? { avgPeriodLength: avgPeriod } : undefined}
         />
         <QuickFact
           icon={Activity}
           value={variance != null ? `${variance}d` : "—"}
           label="Variance"
           delay={0.2}
+          infoTopic="variance"
+          infoContext={variance != null ? { cycleVariance: variance } : undefined}
         />
       </div>
 
@@ -636,8 +653,16 @@ export function DashboardView() {
                 <Egg className="w-5 h-5 text-rose-500" />
               </div>
               <div className="min-w-0">
-                <h3 className="font-semibold leading-tight">
+                <h3 className="font-semibold leading-tight flex items-center gap-1.5">
                   Fertility Window
+                  <InfoIcon
+                    topic="fertilityWindow"
+                    context={
+                      fertileStart && fertileEnd
+                        ? { fertileStart, fertileEnd, ovulationDate, confidence }
+                        : undefined
+                    }
+                  />
                 </h3>
                 <p className="text-xs text-muted-foreground truncate">
                   {fertileStart && fertileEnd

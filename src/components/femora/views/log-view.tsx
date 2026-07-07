@@ -14,10 +14,13 @@ import {
   ChevronDown,
   X,
   Pencil,
+  Sparkles,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { GlassCard } from "@/components/femora/shared/glass-card";
+import { InfoIcon } from "@/components/femora/shared/info-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,6 +67,8 @@ import {
   useUpdateMood,
   useDeleteMood,
   useStats,
+  useParseNaturalLog,
+  type NaturalLogResult,
 } from "@/hooks/use-data";
 import type { Flow, Period, Symptom, MoodEntry } from "@/lib/types";
 import {
@@ -152,6 +157,11 @@ export function LogView() {
     : null;
 
   const [dismissedSuggestEnd, setDismissedSuggestEnd] = useState(false);
+  const [naturalText, setNaturalText] = useState("");
+  const [naturalResult, setNaturalResult] = useState<NaturalLogResult | null>(null);
+  const [naturalIncludeFlow, setNaturalIncludeFlow] = useState(true);
+  const [naturalIncludedSymptoms, setNaturalIncludedSymptoms] = useState<Set<number>>(new Set());
+  const [naturalIncludedMoods, setNaturalIncludedMoods] = useState<Set<number>>(new Set());
   const [periodNote, setPeriodNote] = useState<string>("");
 
   // Prefill/reset the note field whenever the viewed day changes — done as
@@ -196,6 +206,7 @@ export function LogView() {
   const startPeriod = useStartPeriod();
   const endPeriod = useEndPeriod();
   const reopenPeriod = useReopenPeriod();
+  const parseNaturalLog = useParseNaturalLog();
   const logPeriodDay = useLogPeriodDay();
   const updatePeriodDay = useUpdatePeriodDay();
   const deletePeriodDay = useDeletePeriodDay();
@@ -352,6 +363,71 @@ export function LogView() {
     }
   }
 
+  async function handleParseNatural() {
+    if (!naturalText.trim()) return;
+    try {
+      const result = await parseNaturalLog.mutateAsync({ text: naturalText.trim(), date });
+      if (!result.flow && result.symptoms.length === 0 && result.moods.length === 0) {
+        toast.info("Didn't catch anything to log — try being more specific");
+        return;
+      }
+      setNaturalResult(result);
+      setNaturalIncludeFlow(!!result.flow);
+      setNaturalIncludedSymptoms(new Set(result.symptoms.map((_, i) => i)));
+      setNaturalIncludedMoods(new Set(result.moods.map((_, i) => i)));
+    } catch (e) {
+      toast.error("Couldn't process that", {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
+  }
+
+  function handleCancelNatural() {
+    setNaturalResult(null);
+    setNaturalText("");
+  }
+
+  async function handleSaveNaturalResult() {
+    if (!naturalResult) return;
+    const jobs: Promise<unknown>[] = [];
+    if (naturalResult.flow && naturalIncludeFlow) {
+      jobs.push(logPeriodDay.mutateAsync({ date: naturalResult.date, flow: naturalResult.flow }));
+    }
+    naturalResult.symptoms.forEach((s, i) => {
+      if (naturalIncludedSymptoms.has(i)) {
+        jobs.push(
+          createSymptom.mutateAsync({ date: naturalResult.date, symptomName: s.symptomName, severity: s.severity })
+        );
+      }
+    });
+    naturalResult.moods.forEach((m, i) => {
+      if (naturalIncludedMoods.has(i)) {
+        jobs.push(createMood.mutateAsync({ date: naturalResult.date, mood: m }));
+      }
+    });
+    if (jobs.length === 0) {
+      toast.info("Nothing selected to save");
+      return;
+    }
+    try {
+      await Promise.all(jobs);
+      toast.success(`Logged ${jobs.length} thing${jobs.length === 1 ? "" : "s"}`);
+      setNaturalResult(null);
+      setNaturalText("");
+    } catch (e) {
+      toast.error("Some items couldn't be saved", {
+        description: e instanceof Error ? e.message : undefined,
+      });
+    }
+  }
+
+  function toggleSetItem(set: Set<number>, i: number, setter: (s: Set<number>) => void) {
+    const next = new Set(set);
+    if (next.has(i)) next.delete(i);
+    else next.add(i);
+    setter(next);
+  }
+
   async function handleDeleteActivePeriod() {
     if (!activePeriod) return;
     try {
@@ -473,6 +549,113 @@ export function LogView() {
 
   return (
     <div className="view-enter px-4 sm:px-6 pb-24 space-y-4">
+      {/* ---- Natural language quick log ---- */}
+      <GlassCard className="p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <Sparkles className="w-3.5 h-3.5" />
+          </div>
+          <Label className="text-sm font-medium">Quick log</Label>
+        </div>
+
+        {!naturalResult ? (
+          <div className="space-y-2">
+            <Textarea
+              placeholder='e.g. "heavy flow today, bad cramps, felt tired"'
+              value={naturalText}
+              onChange={(e) => setNaturalText(e.target.value)}
+              rows={2}
+              className="resize-none text-sm"
+            />
+            <Button
+              onClick={handleParseNatural}
+              disabled={!naturalText.trim() || parseNaturalLog.isPending}
+              size="sm"
+              className="w-full h-9 bg-femora-gradient text-white border-0 hover:opacity-95"
+            >
+              {parseNaturalLog.isPending ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Reading...
+                </>
+              ) : (
+                <>
+                  <Wand2 className="w-3.5 h-3.5" /> Parse with AI
+                </>
+              )}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Tap to include/exclude, then save:</p>
+            <div className="space-y-1.5">
+              {naturalResult.flow && (
+                <button
+                  type="button"
+                  onClick={() => setNaturalIncludeFlow((v) => !v)}
+                  className={cn(
+                    "w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm border transition-colors text-left",
+                    naturalIncludeFlow
+                      ? "bg-primary/10 border-primary/30"
+                      : "bg-transparent border-border/50 text-muted-foreground line-through"
+                  )}
+                >
+                  <Droplets className="w-3.5 h-3.5 shrink-0" />
+                  Flow: {FLOW_LEVELS.find((f) => f.value === naturalResult.flow)?.label ?? naturalResult.flow}
+                </button>
+              )}
+              {naturalResult.symptoms.map((s, i) => (
+                <button
+                  key={`ns${i}`}
+                  type="button"
+                  onClick={() => toggleSetItem(naturalIncludedSymptoms, i, setNaturalIncludedSymptoms)}
+                  className={cn(
+                    "w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm border transition-colors text-left",
+                    naturalIncludedSymptoms.has(i)
+                      ? "bg-primary/10 border-primary/30"
+                      : "bg-transparent border-border/50 text-muted-foreground line-through"
+                  )}
+                >
+                  <span>{symptomMeta(s.symptomName).emoji}</span>
+                  {s.symptomName} · {SEVERITY_LABELS[s.severity] ?? s.severity}
+                </button>
+              ))}
+              {naturalResult.moods.map((m, i) => {
+                const meta = MOOD_META.find((x) => x.value === m);
+                return (
+                  <button
+                    key={`nm${i}`}
+                    type="button"
+                    onClick={() => toggleSetItem(naturalIncludedMoods, i, setNaturalIncludedMoods)}
+                    className={cn(
+                      "w-full flex items-center gap-2 rounded-xl px-3 py-2 text-sm border transition-colors text-left",
+                      naturalIncludedMoods.has(i)
+                        ? "bg-primary/10 border-primary/30"
+                        : "bg-transparent border-border/50 text-muted-foreground line-through"
+                    )}
+                  >
+                    <span>{meta?.emoji ?? "🙂"}</span>
+                    {meta?.label ?? m}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleCancelNatural} className="h-9 px-4">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveNaturalResult}
+                disabled={logPeriodDay.isPending || createSymptom.isPending || createMood.isPending}
+                size="sm"
+                className="flex-1 h-9 bg-femora-gradient text-white border-0 hover:opacity-95"
+              >
+                <Check className="w-3.5 h-3.5" /> Save
+              </Button>
+            </div>
+          </div>
+        )}
+      </GlassCard>
+
       {/* ---- Date selector ---- */}
       <GlassCard className="p-4">
         <div className="flex items-center justify-between gap-3">
@@ -533,6 +716,10 @@ export function LogView() {
             <Droplets className="w-4 h-4" />
           </div>
           <h2 className="text-lg font-semibold">Period</h2>
+          <InfoIcon
+            topic="flow"
+            context={activePeriod ? { dayOfPeriod, startedOn: activePeriod.startDate } : undefined}
+          />
           {activePeriod && (
             <Badge variant="secondary" className="ml-auto gap-1 bg-primary/10 text-primary">
               Day {dayOfPeriod}
@@ -801,6 +988,10 @@ export function LogView() {
             <Plus className="w-4 h-4" />
           </div>
           <h2 className="text-lg font-semibold">Symptoms</h2>
+          <InfoIcon
+            topic="symptoms"
+            context={symptomsOnDate.length > 0 ? { loggedToday: symptomsOnDate.map((s) => s.symptomName) } : undefined}
+          />
           {symptomsOnDate.length > 0 && (
             <Badge
               variant="secondary"
@@ -1045,6 +1236,10 @@ export function LogView() {
             <Smile className="w-4 h-4" />
           </div>
           <h2 className="text-lg font-semibold">Mood</h2>
+          <InfoIcon
+            topic="mood"
+            context={moodsOnDate.length > 0 ? { loggedToday: moodsOnDate.map((m) => m.mood) } : undefined}
+          />
           {moodsOnDate.length > 0 && (
             <Badge
               variant="secondary"

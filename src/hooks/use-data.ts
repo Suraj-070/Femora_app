@@ -451,6 +451,21 @@ export function useStats() {
 }
 
 // ---- Insights ----
+export function usePersonalizedInfo(topic: string, context: Record<string, unknown>, enabled: boolean) {
+  return useQuery<{ line: string | null }>({
+    queryKey: ["infoPersonalize", topic, JSON.stringify(context ?? {})],
+    queryFn: () =>
+      fetchJson("/api/info-personalize", {
+        method: "POST",
+        body: JSON.stringify({ topic, context }),
+      }) as Promise<{ line: string | null }>,
+    enabled,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    retry: false,
+  });
+}
+
 export function useInsights() {
   return useQuery<import("@/lib/insights").InsightsResult>({
     queryKey: ["insights"],
@@ -482,6 +497,21 @@ export function useVerifyPin() {
         method: "POST",
         body: JSON.stringify({ pin }),
       }) as Promise<{ valid: boolean; error?: string }>,
+  });
+}
+
+export type NaturalLogResult = {
+  date: string;
+  flow: Flow | null;
+  symptoms: { symptomName: string; severity: number }[];
+  moods: string[];
+  notes: string | null;
+};
+
+export function useParseNaturalLog() {
+  return useMutation({
+    mutationFn: (data: { text: string; date: string }) =>
+      fetchJson("/api/log-natural", { method: "POST", body: JSON.stringify(data) }) as Promise<NaturalLogResult>,
   });
 }
 

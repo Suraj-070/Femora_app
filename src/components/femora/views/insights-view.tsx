@@ -34,6 +34,8 @@ import { DynamicIcon } from "@/components/femora/shared/dynamic-icon";
 
 import { useInsights, useStats, usePrediction } from "@/hooks/use-data";
 import type { Insight, FlowCurvePoint } from "@/lib/insights";
+import { InfoIcon } from "@/components/femora/shared/info-icon";
+import type { InfoTopic } from "@/lib/info-content";
 import { cn } from "@/lib/utils";
 
 // ---- Tone → gradient & accent mapping ----
@@ -81,6 +83,15 @@ const TYPE_META: Record<Insight["type"], { label: string; className: string }> =
     className:
       "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/20",
   },
+};
+
+const INSIGHT_TYPE_TO_TOPIC: Record<Insight["type"], InfoTopic> = {
+  pattern: "insightPattern",
+  trend: "insightTrend",
+  regularity: "insightRegularity",
+  symptom: "insightSymptom",
+  mood: "insightMood",
+  tip: "insightTip",
 };
 
 function relativeTime(iso?: string): string | null {
@@ -332,7 +343,10 @@ function FlowCurveChart({ data }: { data: FlowCurvePoint[] }) {
           <Droplets className="w-4 h-4" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold leading-tight">Flow pattern by cycle day</h3>
+          <h3 className="text-sm font-semibold leading-tight flex items-center gap-1">
+            Flow pattern by cycle day
+            <InfoIcon topic="flowCurveChart" />
+          </h3>
           <p className="text-[11px] text-muted-foreground">Average across all your logged periods</p>
         </div>
       </div>
@@ -383,6 +397,7 @@ function HeroInsightCard({ insight }: { insight: Insight }) {
           <Badge variant="outline" className={cn("h-5 text-[10px] uppercase tracking-wide font-semibold px-1.5", typeMeta.className)}>
             {typeMeta.label}
           </Badge>
+          <InfoIcon topic={INSIGHT_TYPE_TO_TOPIC[insight.type]} />
         </div>
         <h3 className="text-lg font-semibold tracking-tight leading-snug">{insight.title}</h3>
         <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{insight.description}</p>
@@ -416,15 +431,18 @@ function InsightCard({ insight }: { insight: Insight }) {
             <h3 className="font-semibold text-[15px] leading-snug tracking-tight">
               {insight.title}
             </h3>
-            <Badge
-              variant="outline"
-              className={cn(
-                "h-5 text-[10px] uppercase tracking-wide font-semibold px-1.5",
-                typeMeta.className
-              )}
-            >
-              {typeMeta.label}
-            </Badge>
+            <div className="flex items-center gap-1">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "h-5 text-[10px] uppercase tracking-wide font-semibold px-1.5",
+                  typeMeta.className
+                )}
+              >
+                {typeMeta.label}
+              </Badge>
+              <InfoIcon topic={INSIGHT_TYPE_TO_TOPIC[insight.type]} />
+            </div>
           </div>
           <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
             {insight.description}
