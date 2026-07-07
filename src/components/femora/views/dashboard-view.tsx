@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, type ReactNode } from "react";
+import { useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import {
   Heart,
@@ -19,6 +20,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { GlassCard } from "@/components/femora/shared/glass-card";
+import { FemoraMascot } from "@/components/femora/shared/femora-mascot";
 import { InfoIcon } from "@/components/femora/shared/info-icon";
 import type { InfoTopic } from "@/lib/info-content";
 import { Button } from "@/components/ui/button";
@@ -323,8 +325,16 @@ export function DashboardView() {
   );
 
   const greeting = getGreeting();
+  const { data: session } = useSession();
+  const firstName = session?.user?.name?.trim().split(" ")[0] || null;
+  const todaysTip = getTodaysFact();
 
   const goLog = () => {
+    setLogDate(todayISO());
+    setView("log");
+  };
+
+  const goLogMood = () => {
     setLogDate(todayISO());
     setView("log");
   };
@@ -469,11 +479,16 @@ export function DashboardView() {
           <div className="relative">
             {/* greeting + confidence */}
             <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <GreetingIcon className="w-4 h-4 text-primary" />
-                <span className="text-sm text-muted-foreground">
-                  {greeting}
-                </span>
+              <div className="flex items-center gap-3">
+                <FemoraMascot className="w-11 h-11 shrink-0" />
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <GreetingIcon className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-sm text-muted-foreground">
+                      {greeting}{firstName ? `, ${firstName}` : ""}
+                    </span>
+                  </div>
+                </div>
               </div>
               {confidence > 0 && (
                 <Badge
@@ -497,16 +512,27 @@ export function DashboardView() {
                   Day {differenceInCalendarDays(fromISO(today), fromISO(activePeriod.startDate)) + 1}
                 </h2>
                 <p className="text-muted-foreground mt-1.5 max-w-md leading-relaxed">
-                  Started {formatNice(activePeriod.startDate)}. Log today&apos;s flow to keep
-                  tracking accurate.
+                  Started {formatNice(activePeriod.startDate)}. How are you feeling today?
                 </p>
-                <Button
-                  onClick={goLog}
-                  className="mt-5 bg-femora-gradient text-white shadow-lg shadow-rose-500/25 hover:opacity-95 h-12 px-6 rounded-xl font-medium"
-                >
-                  <Plus className="w-4 h-4 mr-1.5" />
-                  Log today
-                </Button>
+                <p className="text-xs text-muted-foreground/80 mt-2 max-w-md leading-relaxed italic">
+                  💡 {todaysTip}
+                </p>
+                <div className="flex flex-wrap gap-2 mt-5 justify-center sm:justify-start">
+                  <Button
+                    onClick={goLog}
+                    className="bg-femora-gradient text-white shadow-lg shadow-rose-500/25 hover:opacity-95 h-12 px-6 rounded-xl font-medium"
+                  >
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Log today
+                  </Button>
+                  <Button
+                    onClick={goLogMood}
+                    variant="outline"
+                    className="h-12 px-5 rounded-xl font-medium"
+                  >
+                    How I&apos;m feeling
+                  </Button>
+                </div>
               </div>
             ) : periodMayBeHere ? (
               /* period expected now / overdue */

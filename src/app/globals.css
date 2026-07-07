@@ -215,6 +215,24 @@
   animation: softPulse 2.2s ease-in-out infinite;
 }
 
+/* mascot character — breathing scale + occasional blink, CSS-only, no JS loop */
+@keyframes mascotBreathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.035); }
+}
+.animate-mascot-breathe {
+  animation: mascotBreathe 3.4s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes mascotBlink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+.animate-mascot-blink {
+  animation: mascotBlink 4.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
 /* safe-area padding for bottom nav on mobile */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);

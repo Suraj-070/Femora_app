@@ -22,8 +22,8 @@ self.addEventListener("push", (event) => {
   const title = data.title ?? "Femora";
   const options = {
     body: data.body ?? "You have a new notification.",
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
+    icon: "/icon-192.png", // full-color app icon, shown in the expanded notification
+    badge: "/badge-monochrome.png", // small monochrome silhouette for the status bar — Android tints this itself, a full-color icon here renders badly or falls back to a generic icon
     tag: data.tag ?? "femora-notification",
     renotify: true,
     data: { url: data.url ?? "/" },
