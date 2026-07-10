@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { useState, type ReactNode } from "react";
+import { ServiceWorkerRegistrar } from "@/components/femora/shared/service-worker-registrar";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -37,7 +38,10 @@ export function Providers({ children }: { children: ReactNode }) {
     return (
       <SessionProvider>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <QueryClientProvider client={client}>{children}</QueryClientProvider>
+          <QueryClientProvider client={client}>
+            <ServiceWorkerRegistrar />
+            {children}
+          </QueryClientProvider>
         </ThemeProvider>
       </SessionProvider>
     );
@@ -65,6 +69,7 @@ export function Providers({ children }: { children: ReactNode }) {
             },
           }}
         >
+          <ServiceWorkerRegistrar />
           {children}
         </PersistQueryClientProvider>
       </ThemeProvider>
